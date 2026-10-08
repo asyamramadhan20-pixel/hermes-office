@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { bacaBody } from '~~/server/utils/validasi'
 import { and, eq } from 'drizzle-orm'
 import { useDb, schema } from '~~/server/database/client'
 import { wajibAnggota, orgIdDariRoute } from '~~/server/utils/tenant'
@@ -19,7 +20,7 @@ const Body = z.discriminatedUnion('type', [
  */
 export default defineEventHandler(async (event) => {
   const orgId = orgIdDariRoute(event)
-  const b = Body.parse(await readBody(event))
+  const b = await bacaBody(event, Body)
   const peran = b.type === 'SUBMIT_APPROVAL' ? PERAN_BOLEH_APPROVAL : PERAN_BOLEH_PERINTAH
   const { org, user } = await wajibAnggota(event, orgId, peran)
   const db = useDb()

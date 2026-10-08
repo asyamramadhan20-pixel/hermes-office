@@ -26,7 +26,7 @@ function klien() {
   return f
 }
 
-let admin, hermes, hermesUrl, orgA, orgB, userA, userB, approverA, runtime, webhookUrl, outboundSecret, karyawanA
+let admin, hermes, hermesUrl, orgA, orgB, userA, userB, approverA, memberA, runtime, webhookUrl, outboundSecret, karyawanA
 
 before(async () => {
   const r = spawnSync('node', ['scripts/seed-admin.mjs', ADMIN.email, ADMIN.name, ADMIN.password], { env: { ...process.env, DATABASE_URL: DB }, stdio: 'inherit' })
@@ -37,9 +37,11 @@ before(async () => {
   orgB = (await admin('/api/admin/orgs', { method: 'POST', body: { slug: 'org-b', name: 'Organisasi B' } })).data
   await admin(`/api/admin/orgs/${orgA.id}/members`, { method: 'POST', body: { email: 'ceo-a@test.local', name: 'CEO A', role: 'owner', password: 'password-ceo-a-1' } })
   await admin(`/api/admin/orgs/${orgA.id}/members`, { method: 'POST', body: { email: 'approver-a@test.local', name: 'Approver A', role: 'approver', password: 'password-apr-a-1' } })
+  await admin(`/api/admin/orgs/${orgA.id}/members`, { method: 'POST', body: { email: 'staf-a@test.local', name: 'Staf A', role: 'member', password: 'password-staf-a-1' } })
   await admin(`/api/admin/orgs/${orgB.id}/members`, { method: 'POST', body: { email: 'ceo-b@test.local', name: 'CEO B', role: 'owner', password: 'password-ceo-b-1' } })
   userA = klien(); assert.equal((await userA('/api/auth/login', { method: 'POST', body: { email: 'ceo-a@test.local', password: 'password-ceo-a-1' } })).status, 200)
   userB = klien(); assert.equal((await userB('/api/auth/login', { method: 'POST', body: { email: 'ceo-b@test.local', password: 'password-ceo-b-1' } })).status, 200)
+  memberA = klien(); assert.equal((await memberA('/api/auth/login', { method: 'POST', body: { email: 'staf-a@test.local', password: 'password-staf-a-1' } })).status, 200)
   approverA = klien(); assert.equal((await approverA('/api/auth/login', { method: 'POST', body: { email: 'approver-a@test.local', password: 'password-apr-a-1' } })).status, 200)
 
   hermes = buatHermesPalsu({ apiKey: API_KEY, outboundSecret: null })
@@ -66,12 +68,12 @@ async function kirimOutbound(hook, { session_id, extra = {}, tool_name = null, t
 test('isolasi tenant: B tidak bisa membaca/menulis data A; tanpa login 401', async () => {
   assert.equal((await userB(`/api/orgs/${orgA.id}/ringkasan`)).status, 404)
   assert.equal((await userB(`/api/orgs/${orgA.id}/tasks`)).status, 404)
-  assert.equal((await userB(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Curang', objective: 'x' } })).status, 404)
+  assert.equal((await userB(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Curang', objective: 'Tujuan uji coba' } })).status, 404)
   assert.equal((await userA(`/api/orgs/${orgB.id}/ringkasan`)).status, 404)
   assert.equal((await klien()(`/api/orgs/${orgA.id}/ringkasan`)).status, 401)
   assert.equal((await userA('/api/admin/orgs', { method: 'POST', body: { slug: 'org-x', name: 'X' } })).status, 403)
   // approver tidak boleh mengirim tugas; owner tidak boleh menjawab approval
-  assert.equal((await approverA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Tugas', objective: 'x' } })).status, 403)
+  assert.equal((await approverA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Tugas', objective: 'Tujuan uji coba' } })).status, 403)
 })
 
 test('runtime: kapabilitas terdeteksi dari /v1/capabilities, bukan ditebak', async () => {
@@ -145,7 +147,7 @@ test('alur: ASSIGN_TASK → ACCEPTED (202 Hermes) → poll running → subagent 
 })
 
 test('cancel: CANCEL_REQUESTED sampai runtime konfirmasi cancelled; status terminal tidak ditimpa', async () => {
-  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Tugas panjang', objective: 'Lama' } })
+  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Tugas panjang', objective: 'Tugas yang lama sekali' } })
   const taskId = kirim.data.taskId
   await tick()
   let t = (await userA(`/api/orgs/${orgA.id}/tasks/${taskId}`)).data
@@ -164,8 +166,8 @@ test('cancel: CANCEL_REQUESTED sampai runtime konfirmasi cancelled; status termi
   assert.equal(t.tugas.status, 'CANCELLED'); assert.equal(t.runs[0].status, 'cancelled')
 })
 
-test('approval: waiting_for_approval → approver menjawab via /v1/runs/{id}/approval; owner ditolak', async () => {
-  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Butuh izin', objective: 'Hapus file' } })
+test('approval: waiting_for_approval → approver menjawab via /v1/runs/{id}/approval; member ditolak', async () => {
+  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Butuh izin', objective: 'Hapus file build lama' } })
   const taskId = kirim.data.taskId
   await tick()
   let t = (await userA(`/api/orgs/${orgA.id}/tasks/${taskId}`)).data
@@ -175,7 +177,7 @@ test('approval: waiting_for_approval → approver menjawab via /v1/runs/{id}/app
   t = (await userA(`/api/orgs/${orgA.id}/tasks/${taskId}`)).data
   assert.equal(t.tugas.status, 'WAITING_APPROVAL'); assert.equal(t.approvals.length, 1); assert.equal(t.approvals[0].status, 'pending')
   const ap = t.approvals[0]
-  assert.equal((await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'SUBMIT_APPROVAL', approvalId: ap.id, choice: 'once' } })).status, 403)
+  assert.equal((await memberA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'SUBMIT_APPROVAL', approvalId: ap.id, choice: 'once' } })).status, 403)
   assert.equal((await approverA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'SUBMIT_APPROVAL', approvalId: ap.id, choice: 'once' } })).status, 200)
   await tick()
   t = (await userA(`/api/orgs/${orgA.id}/tasks/${taskId}`)).data
@@ -184,7 +186,7 @@ test('approval: waiting_for_approval → approver menjawab via /v1/runs/{id}/app
 })
 
 test('runtime hilang / galat: command jaringan → UNKNOWN lalu ulang; run 404 → UNKNOWN (bukan selesai)', async () => {
-  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Rapuh', objective: 'x' } })
+  const kirim = await userA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Rapuh', objective: 'Tujuan uji coba' } })
   const taskId = kirim.data.taskId
   hermes.suntikGalat(503)
   await tick('?runtime=0')
@@ -206,7 +208,7 @@ test('runtime hilang / galat: command jaringan → UNKNOWN lalu ulang; run 404 �
 
 test('ASSIGN_TASK ditolak bila organisasi belum punya runtime', async () => {
   const kB = (await userB(`/api/orgs/${orgB.id}/employees`, { method: 'POST', body: { name: 'Budi', jobTitle: 'CS', department: 'CS' } })).data
-  const kirim = await userB(`/api/orgs/${orgB.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: kB.id, title: 'Tanpa runtime', objective: 'x' } })
+  const kirim = await userB(`/api/orgs/${orgB.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: kB.id, title: 'Tanpa runtime', objective: 'Tujuan uji coba' } })
   await tick()
   const cmd = (await userB(`/api/orgs/${orgB.id}/commands`)).data.find(c => c.taskId === kirim.data.taskId)
   assert.equal(cmd.state, 'REJECTED'); assert.match(cmd.lastError, /belum dipasang/)

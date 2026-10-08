@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { bacaBody } from '~~/server/utils/validasi'
 import { eq, sql } from 'drizzle-orm'
 import { useDb, schema } from '~~/server/database/client'
 import { cekKataSandi, catatAudit, ambilIp, MAKS_GAGAL, DURASI_KUNCI_MS } from '~~/server/utils/auth'
@@ -6,7 +7,7 @@ import { cekKataSandi, catatAudit, ambilIp, MAKS_GAGAL, DURASI_KUNCI_MS } from '
 const Body = z.object({ email: z.string().email('Email tidak sah'), password: z.string().min(1) })
 
 export default defineEventHandler(async (event) => {
-  const { email, password } = Body.parse(await readBody(event))
+  const { email, password } = await bacaBody(event, Body)
   const db = useDb()
   const ip = ambilIp(event)
   const [user] = await db.select().from(schema.users).where(sql`lower(${schema.users.email}) = ${email.toLowerCase()}`).limit(1)

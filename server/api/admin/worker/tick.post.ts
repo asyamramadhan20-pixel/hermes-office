@@ -8,6 +8,6 @@ export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   if (q.runtime !== '0') await segarkanRuntime()
   const diproses = await jalankanWorkerPerintah()
-  await rekonsiliasiSekali()
+  await rekonsiliasiSekali(true)
   return { diproses }
 })

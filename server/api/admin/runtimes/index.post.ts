@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { bacaBody } from '~~/server/utils/validasi'
 import { randomBytes } from 'node:crypto'
 import { useDb, schema } from '~~/server/database/client'
 import { wajibPlatformAdmin, catatAudit, ambilIp } from '~~/server/utils/auth'
@@ -20,7 +21,7 @@ const Body = z.object({
  */
 export default defineEventHandler(async (event) => {
   const admin = await wajibPlatformAdmin(event)
-  const b = Body.parse(await readBody(event))
+  const b = await bacaBody(event, Body)
   const kunciWebhook = randomBytes(24).toString('base64url')
   const outboundSecret = b.outboundSecret ?? randomBytes(32).toString('base64url')
   const db = useDb()

@@ -12,12 +12,12 @@ const BATAS_TIDAK_DIKETAHUI_MS = 15 * 60_000
  * `GET /v1/runs/{id}` tiap menit. Runtime diam ≠ selesai: gagal poll lama → UNKNOWN, bukan COMPLETED.
  * Sekalian menyegarkan /v1/capabilities + status runtime.
  */
-export async function rekonsiliasiSekali() {
+export async function rekonsiliasiSekali(paksa = false) {
   const db = useDb()
   const runs = await db.select().from(schema.agentRuns).where(and(
     eq(schema.agentRuns.kind, 'main'),
     inArray(schema.agentRuns.status, ['queued', 'running', 'waiting_for_approval', 'stopping', 'unknown']),
-    or(isNull(schema.agentRuns.lastPolledAt), lt(schema.agentRuns.lastPolledAt, new Date(Date.now() - INTERVAL_MS / 2)))
+    paksa ? undefined : or(isNull(schema.agentRuns.lastPolledAt), lt(schema.agentRuns.lastPolledAt, new Date(Date.now() - INTERVAL_MS / 2)))
   )).limit(100)
   const perOrg = new Map<string, typeof runs>()
   for (const r of runs) perOrg.set(r.organizationId, [...(perOrg.get(r.organizationId) ?? []), r])

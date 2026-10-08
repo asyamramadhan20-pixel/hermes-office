@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { bacaBody } from '~~/server/utils/validasi'
 import { sql } from 'drizzle-orm'
 import { useDb, schema } from '~~/server/database/client'
 import { wajibPlatformAdmin, catatAudit, ambilIp, hashKataSandi, validasiPassword } from '~~/server/utils/auth'
@@ -14,7 +15,7 @@ const Body = z.object({
 export default defineEventHandler(async (event) => {
   const admin = await wajibPlatformAdmin(event)
   const orgId = getRouterParam(event, 'orgId') ?? ''
-  const b = Body.parse(await readBody(event))
+  const b = await bacaBody(event, Body)
   const db = useDb()
   let [u] = await db.select().from(schema.users).where(sql`lower(${schema.users.email}) = ${b.email.toLowerCase()}`).limit(1)
   if (!u) {
