@@ -3,7 +3,7 @@
  * Kantor Virtual 3D (keputusan Asyam 8 Okt 2026, menggantikan PRD §10 "2D dulu").
  * Invarian tetap: setiap karakter yang bergerak/menyala = run nyata di agent_runs; tidak ada aktivitas simulasi.
  */
-import type { KaryawanAI, TugasRingkas } from '~~/shared/kontrak'
+import type { KaryawanAI, TugasRingkas, EventRingkas } from '~~/shared/kontrak'
 
 useHead({ title: 'Kantor Virtual' })
 
@@ -21,6 +21,33 @@ const ringkasKantor = computed(() => ({
   departemen: new Set(karyawan.value.filter(k => !k.isSupervisor).map(k => k.department)).size
 }))
 const basi = computed(() => (ringkas.value?.runtime.menitSejakEventTerakhir ?? 0) > 10)
+
+/**
+ * Sumber event untuk koreografi.
+ * - live: aktivitasTerbaru dari control plane, disegarkan tiap 15 dtk (SSE menyusul).
+ * - demo: fixture diputar ulang tiap 6 dtk dengan stempel waktu sekarang supaya reaksi terlihat; SELALU berlabel DEMO.
+ */
+const eventKoreografi = ref<EventRingkas[]>([])
+let timerEvent: ReturnType<typeof setInterval> | null = null
+let indeksReplay = 0
+watch(() => ringkas.value?.aktivitasTerbaru, (ev) => { if (!demo && ev) eventKoreografi.value = ev }, { immediate: true })
+onMounted(() => {
+  if (demo) {
+    const sumber = ringkas.value?.aktivitasTerbaru ?? []
+    eventKoreografi.value = [...sumber]
+    timerEvent = setInterval(() => {
+      if (!sumber.length) return
+      const asli = sumber[indeksReplay % sumber.length]!
+      indeksReplay++
+      eventKoreografi.value = [{ ...asli, id: `${asli.id}-replay-${indeksReplay}`, occurredAt: new Date().toISOString() }, ...eventKoreografi.value].slice(0, 40)
+    }, 6000)
+  } else {
+    timerEvent = setInterval(() => { segarkan() }, 15000)
+  }
+})
+onBeforeUnmount(() => { if (timerEvent) clearInterval(timerEvent) })
+
+const ringkasLokasi = ref<Record<string, number>>({})
 const terputus = computed(() => ringkas.value?.runtime.status === 'offline')
 
 /* Laci profil & laci tugas */
@@ -81,9 +108,9 @@ async function mintaBatal(taskId: string) {
         </template>
       </Keadaan>
     </UCard>
-    <div v-else-if="ringkas" class="relative rounded-xl ring-1 ring-default overflow-hidden bg-shell" :style="{ height: 'clamp(420px, 62vh, 720px)' }">
+    <div v-else-if="ringkas" class="relative rounded-xl ring-1 ring-default overflow-hidden bg-shell" :style="{ height: 'clamp(480px, 72vh, 860px)' }">
       <ClientOnly>
-        <KantorSceneKantor :karyawan="karyawan" :nama-org="ringkas.org.name" :terpilih-id="karyawanDipilih?.id" @pilih="pilihKaryawan" />
+        <KantorSceneKantor :karyawan="karyawan" :tugas="daftarTugas ?? []" :events="eventKoreografi" :nama-org="ringkas.org.name" :terpilih-id="karyawanDipilih?.id" @pilih="pilihKaryawan" @ringkas-lokasi="ringkasLokasi = $event" />
         <template #fallback><Keadaan jenis="memuat" judul="Menyiapkan kantor 3D…" deskripsi="Membutuhkan WebGL di peramban." /></template>
       </ClientOnly>
 
@@ -92,9 +119,11 @@ async function mintaBatal(taskId: string) {
         <span class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-default backdrop-blur-sm text-highlighted tnum"><UIcon name="i-lucide-users" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ ringkasKantor.karyawan }} AI employee</span>
         <span class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-cyan-500/40 backdrop-blur-sm text-cyan-700 dark:text-cyan-300 tnum"><UIcon name="i-lucide-activity" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ ringkasKantor.run }} run berjalan · {{ ringkasKantor.sibuk }} sedang bekerja</span>
         <span class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-default backdrop-blur-sm text-highlighted tnum"><UIcon name="i-lucide-building-2" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ ringkasKantor.departemen }} departemen</span>
+        <span v-if="ringkasLokasi.meeting" class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-amber-500/40 backdrop-blur-sm text-amber-700 dark:text-amber-300 tnum"><UIcon name="i-lucide-shield-question" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ ringkasLokasi.meeting }} di ruang meeting</span>
+        <span v-if="(ringkasLokasi.lounge ?? 0) + (ringkasLokasi.pantry ?? 0)" class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-default backdrop-blur-sm text-muted tnum"><UIcon name="i-lucide-coffee" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ (ringkasLokasi.lounge ?? 0) + (ringkasLokasi.pantry ?? 0) }} istirahat</span>
       </div>
       <p class="absolute bottom-3 left-3 right-3 text-[11px] text-muted bg-default/80 backdrop-blur-sm rounded-md px-2 py-1 ring-1 ring-default w-fit max-w-full pointer-events-none">
-        Seret untuk memutar, gulir untuk zoom, klik karakter untuk profil. Layar cyan & gerak = run nyata di <code class="font-mono">agent_runs</code>; tidak ada aktivitas simulasi.
+        Seret untuk memutar, gulir untuk zoom, klik karakter untuk profil. Gerak tiap orang diturunkan dari status tugas & event nyata (menerima tugas → jalan dari HQ, menunggu persetujuan → ruang meeting, subagent → lab, idle → santai/pantry).<span v-if="demo"> Mode demo memutar ulang event fixture.</span>
       </p>
     </div>
 

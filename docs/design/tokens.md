@@ -23,7 +23,7 @@ Font: Inter / system. Angka metrik `tabular-nums` (`tnum`). Fokus keyboard: outl
 
 ## Arsitektur informasi (navigasi)
 1. **Pusat Komando** `/` — KPI, komposer perintah (live), tugas aktif, aktivitas, persetujuan, kesehatan runtime, roster AI employee.
-2. **Kantor Virtual** `/kantor` — kantor 3D isometrik (Three.js/TresJS): gedung pusat supervisor, zona heksagonal per departemen, meja + layar, karakter low-poly per AI employee, label nama + status; klik → laci profil → laci tugas. Keputusan Asyam 8 Okt (mengganti rencana 2D PRD §10). Warna per departemen di `app/utils/kantor3d.ts`; cyan hanya untuk run berjalan.
+2. **Kantor Virtual** `/kantor` — kantor 3D (Three.js/TresJS) dengan denah: Ruang Meeting · HQ supervisor · Lab Subagent (belakang), ruangan per divisi berkaca dengan papan tulis & meja berjajar (tengah), Ruang Santai · Pantry (depan). **Koreografi berbasis data** (`app/utils/koreografi.ts`): menerima tugas → jalan dari HQ ke meja; RUNNING → mengetik (tempo = jumlah event nyata); event `tool.completed` → gerakan kecil + chip; `subagent.started` → asisten kecil ke Lab; WAITING_APPROVAL → duduk di Ruang Meeting; CANCEL_REQUESTED/UNKNOWN → layar amber; selesai → lompat; idle → sesekali ke Santai/Pantry (label tetap idle). Mode demo memutar ulang event fixture (berlabel DEMO); live memakai event nyata (poll 15 dtk).
 3. Papan Tugas `/tugas` — tabel/kanban status (placeholder).
 4. Persetujuan `/persetujuan` (placeholder). 5. Kesehatan Runtime `/runtime` (placeholder). 6. Pengaturan `/pengaturan` (placeholder).
 Top bar: pemilih perusahaan (`USelectMenu`), mode warna, menu pengguna. Mobile: `USlideover`. Banner DEMO global saat demo.
