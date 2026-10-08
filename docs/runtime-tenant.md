@@ -1,5 +1,7 @@
 # Runtime Hermes per tenant (VPS)
 
+> Panduan setup hook langkah demi langkah + troubleshooting: `docs/hermes-hook-setup.md`.
+
 Satu perusahaan = satu container Hermes Agent dengan `HERMES_HOME` sendiri (volume terpisah), `API_SERVER_KEY` sendiri,
 dan secret outbound sendiri. Tidak ada volume/token/profil browser yang dibagi antar tenant (PRD §05).
 Semua kontrak di bawah terverifikasi di `docs/audit-phase0.md` (upstream `457a1e1`); **cek ulang pada versi yang terpasang**

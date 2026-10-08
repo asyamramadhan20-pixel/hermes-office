@@ -6,6 +6,7 @@ Bukan engine agent; tidak ada aktivitas agent palsu (mode demo = fixture berlabe
 
 - Arsitektur & verifikasi kapabilitas Hermes: `docs/audit-phase0.md`
 - Memasang runtime per tenant: `docs/runtime-tenant.md`, `deploy/docker-compose.tenant.yml`
+- Menyambungkan hook Hermes ke control plane (langkah demi langkah): `docs/hermes-hook-setup.md`
 - Aturan kerja: `CLAUDE.md`
 
 ## Menjalankan
