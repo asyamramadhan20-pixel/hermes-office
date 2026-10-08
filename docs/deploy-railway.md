@@ -3,7 +3,16 @@
 Repo: https://github.com/asyamramadhan20-pixel/hermes-office (branch `main`). Build & start sudah diatur di `railway.json`
 (Nixpacks, `npm ci && npm run build`, preDeploy `node scripts/migrate.mjs`, healthcheck `/api/health`, 1 replika).
 
-## Sekali jalan, lewat dashboard Railway
+## Cara tercepat: workflow "Railway setup" (sekali jalan)
+1. Di Railway: buat **project kosong**, lalu Project → Settings → Tokens → buat **Project Token** (environment `production`).
+2. Di GitHub repo: Settings → Secrets and variables → Actions → **New repository secret** `RAILWAY_TOKEN` = token tadi.
+3. Tab **Actions → "Railway setup (sekali jalan)" → Run workflow**: isi email admin, biarkan `buat_database` = true.
+   Workflow membuat Postgres, service `hermes-office`, variabel (kunci acak), domain publik, lalu deploy pertama.
+4. Cek `https://<domain>/api/health`. Login dengan email admin; password ada di Railway → Variables → `SEED_ADMIN_PASSWORD`.
+   **Hapus** `SEED_ADMIN_EMAIL/NAME/PASSWORD` setelah login pertama.
+5. Selanjutnya setiap push ke `main` yang lolos test di-deploy otomatis oleh job `deploy` di `ci-cd.yml` (secret yang sama).
+
+## Alternatif manual lewat dashboard Railway
 1. **New Project → Deploy from GitHub repo** → pilih `hermes-office`, branch `main`.
 2. Di project yang sama: **+ New → Database → PostgreSQL**. Railway membuat variabel `DATABASE_URL` di service Postgres.
 3. Buka service `hermes-office` → **Variables**, isi:

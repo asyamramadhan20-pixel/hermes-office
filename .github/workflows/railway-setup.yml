@@ -1,0 +1,77 @@
+name: Railway setup (sekali jalan)
+
+# Menyiapkan proyek Railway dari nol memakai secret RAILWAY_TOKEN (project token):
+# database Postgres, service hermes-office, variabel, domain, lalu deploy pertama.
+# Jalankan manual dari tab Actions → "Railway setup" → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      buat_database:
+        description: 'Buat database Postgres baru di proyek (false bila sudah ada service "Postgres")'
+        type: boolean
+        default: true
+      nama_service:
+        description: 'Nama service aplikasi di Railway'
+        type: string
+        default: hermes-office
+      admin_email:
+        description: 'Email platform admin pertama'
+        type: string
+        required: true
+      admin_nama:
+        description: 'Nama platform admin pertama'
+        type: string
+        default: Admin
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SVC: ${{ inputs.nama_service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pasang Railway CLI
+        run: npm i -g @railway/cli && railway --version
+      - name: Database Postgres
+        if: inputs.buat_database
+        run: railway add --database postgres
+      - name: Service aplikasi
+        run: railway add --service "$SVC" || echo "service mungkin sudah ada, lanjut"
+      - name: Variabel rahasia & konfigurasi
+        run: |
+          ENC=$(openssl rand -base64 32); SES=$(openssl rand -base64 32); PW=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)
+          REF="\$"'{{Postgres.DATABASE_URL}}'
+          railway variables --service "$SVC" --skip-deploys \
+            --set "DATABASE_URL=$REF" \
+            --set "ENCRYPTION_KEY=$ENC" \
+            --set "NUXT_SESSION_PASSWORD=$SES" \
+            --set "NUXT_PUBLIC_OFFICE_MODE=live" \
+            --set "SEED_ADMIN_EMAIL=${{ inputs.admin_email }}" \
+            --set "SEED_ADMIN_NAME=${{ inputs.admin_nama }}" \
+            --set "SEED_ADMIN_PASSWORD=$PW"
+          echo "::notice::Password admin pertama ada di Railway → service $SVC → Variables → SEED_ADMIN_PASSWORD. Setelah login, hapus ketiga SEED_ADMIN_*."
+      - name: Domain publik
+        id: domain
+        run: |
+          OUT=$(railway domain --service "$SVC" 2>&1 || true); echo "$OUT"
+          URL=$(echo "$OUT" | grep -oE 'https://[a-zA-Z0-9.-]+' | head -1)
+          if [ -z "$URL" ]; then URL=$(railway domain --service "$SVC" --json 2>/dev/null | grep -oE 'https://[a-zA-Z0-9.-]+' | head -1); fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: NUXT_PUBLIC_APP_URL
+        if: steps.domain.outputs.url != ''
+        run: railway variables --service "$SVC" --skip-deploys --set "NUXT_PUBLIC_APP_URL=${{ steps.domain.outputs.url }}"
+      - name: Deploy pertama
+        run: railway up --service "$SVC" --detach
+      - name: Ringkasan
+        run: |
+          echo "## Railway siap" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Service: $SVC" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${{ steps.domain.outputs.url || '(buat domain manual di Railway lalu set NUXT_PUBLIC_APP_URL)' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Cek: ${{ steps.domain.outputs.url }}/api/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Login: ${{ inputs.admin_email }} (password di Variables → SEED_ADMIN_PASSWORD; hapus SEED_ADMIN_* sesudahnya)" >> "$GITHUB_STEP_SUMMARY"
