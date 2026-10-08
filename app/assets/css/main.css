@@ -80,3 +80,5 @@
 @utility bg-shell { background-color: var(--ui-bg-shell); }
 /* Angka metrik: tabular agar kolom rata. */
 @utility tnum { font-variant-numeric: tabular-nums; }
+
+@utility no-scrollbar { scrollbar-width: none; &::-webkit-scrollbar { display: none; } }

@@ -147,6 +147,8 @@ onBeforeRender(({ delta, elapsed }) => {
   if (rayakanSampai < 0) rayakanSampai = elapsed + 2.0
   if (elapsed < lompatSampai) y += Math.sin((1 - (lompatSampai - elapsed) / 0.6) * Math.PI) * 0.28
   if (elapsed < rayakanSampai) y += Math.abs(Math.sin(elapsed * 9)) * 0.22
+  // "duduk" di kursi meeting: badan turun sedikit
+  if (!berjalan && tujuan === t.meeting) y -= 0.26
   g.position.y = y
 })
 

@@ -6,7 +6,9 @@
 import { OrbitControls } from '@tresjs/cientos'
 import { NoToneMapping, SRGBColorSpace } from 'three'
 import type { KaryawanAI, TugasRingkas, EventRingkas } from '~~/shared/kontrak'
-import { posisiZona, ukuranRuangDivisi, LANTAI, RUANG } from '~/utils/kantor3d'
+import { shallowRef } from 'vue'
+import type { OrbitControls as OrbitControlsTipe } from 'three-stdlib'
+import { posisiZona, ukuranRuangDivisi, LANTAI, RUANG, type Titik } from '~/utils/kantor3d'
 import { turunkanAksi, turunkanAksiSupervisor, type AksiKarakter } from '~/utils/koreografi'
 import type { Lokasi } from './KarakterAI.vue'
 
@@ -16,8 +18,10 @@ const props = withDefaults(defineProps<{
   events: EventRingkas[]
   namaOrg: string
   terpilihId?: string | null
-}>(), { terpilihId: null })
-const emit = defineEmits<{ pilih: [karyawan: KaryawanAI], ringkasLokasi: [r: Record<Lokasi, number>] }>()
+  /** Fokus kamera: posisi ruangan + jarak; null = tampilan seluruh kantor. */
+  fokus?: { id: string, posisi: Titik, jarak: number } | null
+}>(), { terpilihId: null, fokus: null })
+const emit = defineEmits<{ pilih: [karyawan: KaryawanAI], ringkasLokasi: [r: Record<Lokasi, number>], daftarRuang: [r: { id: string, nama: string, posisi: Titik, jarak: number }[]] }>()
 
 const colorMode = useColorMode()
 const gelap = computed(() => colorMode.value === 'dark')
@@ -26,6 +30,16 @@ const latar = computed(() => gelap.value ? '#101319' : '#F4F6F8')
 const sempit = ref(typeof window !== 'undefined' && window.innerWidth < 768)
 const posisiKamera = computed<[number, number, number]>(() => sempit.value ? [0, 26, 33] : [0, 21, 26])
 const fov = computed(() => sempit.value ? 56 : 40)
+
+/* ── fokus kamera: dijalankan oleh KantorFokusKamera di dalam kanvas ── */
+// Template ref ke komponen OrbitControls: `instance` (ShallowRef) sudah di-unwrap oleh proxy komponen,
+// tetapi dijaga untuk kedua bentuk supaya tidak bergantung pada detail implementasi cientos.
+const kontrol = shallowRef<{ instance: OrbitControlsTipe | { value: OrbitControlsTipe | null } | null } | null>(null)
+const instansKontrol = computed<OrbitControlsTipe | null>(() => {
+  const i = kontrol.value?.instance
+  if (!i) return null
+  return 'update' in i ? i : (i.value ?? null)
+})
 
 /* jam berjalan supaya mode berbasis waktu (reaksi ≤90 dtk, rayakan ≤3 mnt) ikut bergeser */
 const sekarang = ref(Date.now())
@@ -41,6 +55,17 @@ const departemen = computed(() => {
   const ukuran = daftar.map(d => ukuranRuangDivisi(d.daftar.length, daftar.length))
   return daftar.map((d, i) => ({ ...d, ...ukuran[i]!, position: posisiZona(i, daftar.length, ukuran.map(u => u.lebar)) }))
 })
+/* daftar ruangan untuk chip fokus di halaman */
+watch(departemen, (d) => {
+  emit('daftarRuang', [
+    { id: 'hq', nama: 'HQ', posisi: RUANG.hq, jarak: 9 },
+    { id: 'meeting', nama: 'Ruang Meeting', posisi: RUANG.meeting, jarak: 9 },
+    { id: 'lab', nama: 'Lab Subagent', posisi: RUANG.lab, jarak: 9 },
+    ...d.map(x => ({ id: `divisi:${x.nama}`, nama: `Divisi ${x.nama}`, posisi: x.position, jarak: Math.max(8, x.lebar * 1.3) })),
+    { id: 'santai', nama: 'Ruang Santai', posisi: RUANG.lounge, jarak: 9 },
+    { id: 'pantry', nama: 'Pantry', posisi: RUANG.pantry, jarak: 9 }
+  ])
+}, { immediate: true })
 
 const aksiPer = computed<Record<string, AksiKarakter>>(() => {
   const hasil: Record<string, AksiKarakter> = {}
@@ -70,7 +95,9 @@ const aksiSupervisor = computed<AksiKarakter>(() => supervisor.value ? aksiPer.v
 <template>
   <TresCanvas :clear-color="latar" shadows :tone-mapping="NoToneMapping" :output-color-space="SRGBColorSpace" :dpr="[1, 1.5]">
     <TresPerspectiveCamera :position="posisiKamera" :fov="fov" :look-at="[0, 0.3, 0.8]" />
-    <OrbitControls :enable-pan="true" :min-distance="14" :max-distance="48" :min-polar-angle="0.45" :max-polar-angle="1.3" :target="[0, 0.3, 0.8]" />
+    <OrbitControls ref="kontrol" :enable-pan="true" :min-distance="14" :max-distance="48" :min-polar-angle="0.45" :max-polar-angle="1.3" :target="[0, 0.3, 0.8]" />
+
+    <KantorFokusKamera :kontrol="instansKontrol" :fokus="fokus ?? null" :kamera-awal="posisiKamera" :arah-awal="[0, 0.3, 0.8]" />
 
     <TresAmbientLight :intensity="gelap ? 0.55 : 0.85" />
     <TresDirectionalLight :position="[8, 18, 10]" :intensity="gelap ? 1.5 : 2.1" cast-shadow :shadow-mapSize-width="2048" :shadow-mapSize-height="2048"

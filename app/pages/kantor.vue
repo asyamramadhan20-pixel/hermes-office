@@ -4,6 +4,7 @@
  * Invarian tetap: setiap karakter yang bergerak/menyala = run nyata di agent_runs; tidak ada aktivitas simulasi.
  */
 import type { KaryawanAI, TugasRingkas, EventRingkas } from '~~/shared/kontrak'
+import type { Titik } from '~/utils/kantor3d'
 
 useHead({ title: 'Kantor Virtual' })
 
@@ -48,6 +49,32 @@ onMounted(() => {
 onBeforeUnmount(() => { if (timerEvent) clearInterval(timerEvent) })
 
 const ringkasLokasi = ref<Record<string, number>>({})
+
+/* ── fokus ruangan (chip) & layar penuh ── */
+type Ruang = { id: string, nama: string, posisi: Titik, jarak: number }
+const daftarRuang = ref<Ruang[]>([])
+const fokusId = ref<string>('semua')
+const fokus = computed(() => daftarRuang.value.find(r => r.id === fokusId.value) ?? null)
+
+const wadahKantor = ref<HTMLElement | null>(null)
+const layarPenuh = ref(false)
+const dukungFullscreen = computed(() => import.meta.client && !!document.documentElement.requestFullscreen)
+async function toggleLayarPenuh() {
+  const el = wadahKantor.value
+  if (!el) return
+  if (dukungFullscreen.value) {
+    try {
+      if (!document.fullscreenElement) await el.requestFullscreen()
+      else await document.exitFullscreen()
+      return
+    } catch { /* jatuh ke mode overlay */ }
+  }
+  layarPenuh.value = !layarPenuh.value
+}
+function sinkronFullscreen() { layarPenuh.value = !!document.fullscreenElement }
+function tombolEsc(e: KeyboardEvent) { if (e.key === 'Escape' && layarPenuh.value && !document.fullscreenElement) layarPenuh.value = false }
+onMounted(() => { document.addEventListener('fullscreenchange', sinkronFullscreen); window.addEventListener('keydown', tombolEsc) })
+onBeforeUnmount(() => { document.removeEventListener('fullscreenchange', sinkronFullscreen); window.removeEventListener('keydown', tombolEsc) })
 const terputus = computed(() => ringkas.value?.runtime.status === 'offline')
 
 /* Laci profil & laci tugas */
@@ -108,9 +135,14 @@ async function mintaBatal(taskId: string) {
         </template>
       </Keadaan>
     </UCard>
-    <div v-else-if="ringkas" class="relative rounded-xl ring-1 ring-default overflow-hidden bg-shell" :style="{ height: 'clamp(480px, 72vh, 860px)' }">
+    <div
+      v-else-if="ringkas"
+      ref="wadahKantor"
+      :class="['relative overflow-hidden bg-shell', layarPenuh ? 'fixed inset-0 z-50' : 'rounded-xl ring-1 ring-default']"
+      :style="layarPenuh ? undefined : { height: 'clamp(480px, 72vh, 860px)' }"
+    >
       <ClientOnly>
-        <KantorSceneKantor :karyawan="karyawan" :tugas="daftarTugas ?? []" :events="eventKoreografi" :nama-org="ringkas.org.name" :terpilih-id="karyawanDipilih?.id" @pilih="pilihKaryawan" @ringkas-lokasi="ringkasLokasi = $event" />
+        <KantorSceneKantor :karyawan="karyawan" :tugas="daftarTugas ?? []" :events="eventKoreografi" :nama-org="ringkas.org.name" :terpilih-id="karyawanDipilih?.id" :fokus="fokus" @pilih="pilihKaryawan" @ringkas-lokasi="ringkasLokasi = $event" @daftar-ruang="daftarRuang = $event" />
         <template #fallback><Keadaan jenis="memuat" judul="Menyiapkan kantor 3D…" deskripsi="Membutuhkan WebGL di peramban." /></template>
       </ClientOnly>
 
@@ -122,7 +154,19 @@ async function mintaBatal(taskId: string) {
         <span v-if="ringkasLokasi.meeting" class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-amber-500/40 backdrop-blur-sm text-amber-700 dark:text-amber-300 tnum"><UIcon name="i-lucide-shield-question" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ ringkasLokasi.meeting }} di ruang meeting</span>
         <span v-if="(ringkasLokasi.lounge ?? 0) + (ringkasLokasi.pantry ?? 0)" class="text-xs px-2 py-1 rounded-md bg-default/90 ring-1 ring-default backdrop-blur-sm text-muted tnum"><UIcon name="i-lucide-coffee" class="size-3 mr-1 align-[-2px]" aria-hidden="true" />{{ (ringkasLokasi.lounge ?? 0) + (ringkasLokasi.pantry ?? 0) }} istirahat</span>
       </div>
-      <p class="absolute bottom-3 left-3 right-3 text-[11px] text-muted bg-default/80 backdrop-blur-sm rounded-md px-2 py-1 ring-1 ring-default w-fit max-w-full pointer-events-none">
+      <div class="absolute top-3 right-3 flex items-center gap-1.5">
+        <UButton :icon="layarPenuh ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" :label="layarPenuh ? 'Keluar' : 'Layar penuh'" size="xs" color="neutral" variant="solid" :aria-label="layarPenuh ? 'Keluar layar penuh' : 'Layar penuh'" @click="toggleLayarPenuh" />
+      </div>
+
+      <!-- chip fokus ruangan: bisa digulir di HP -->
+      <div class="absolute bottom-12 left-3 right-3 overflow-x-auto no-scrollbar" role="tablist" aria-label="Fokus ruangan">
+        <div class="flex gap-1.5 w-max pr-3">
+          <UButton size="xs" :color="fokusId === 'semua' ? 'primary' : 'neutral'" :variant="fokusId === 'semua' ? 'solid' : 'soft'" icon="i-lucide-scan" label="Seluruh kantor" role="tab" :aria-selected="fokusId === 'semua'" @click="fokusId = 'semua'" />
+          <UButton v-for="r in daftarRuang" :key="r.id" size="xs" :color="fokusId === r.id ? 'primary' : 'neutral'" :variant="fokusId === r.id ? 'solid' : 'soft'" :label="r.nama" role="tab" :aria-selected="fokusId === r.id" @click="fokusId = r.id" />
+        </div>
+      </div>
+
+      <p class="absolute bottom-3 left-3 right-3 text-[11px] text-muted bg-default/80 backdrop-blur-sm rounded-md px-2 py-1 ring-1 ring-default w-fit max-w-full pointer-events-none truncate">
         Seret untuk memutar, gulir untuk zoom, klik karakter untuk profil. Gerak tiap orang diturunkan dari status tugas & event nyata (menerima tugas → jalan dari HQ, menunggu persetujuan → ruang meeting, subagent → lab, idle → santai/pantry).<span v-if="demo"> Mode demo memutar ulang event fixture.</span>
       </p>
     </div>
