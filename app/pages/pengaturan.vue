@@ -85,6 +85,21 @@ async function pasangRuntime() {
     await segarkanOrg()
   } catch (e) { toast.add({ title: 'Gagal memasang runtime', description: galat(e), color: 'error', icon: 'i-lucide-triangle-alert' }) } finally { simpanRuntime.value = false }
 }
+/* ubah koneksi tanpa rotasi kunci webhook/secret */
+const ubahKoneksi = reactive({ name: '', baseUrl: '', apiKey: '' })
+watch(org, (o) => { ubahKoneksi.name = o?.runtime?.name ?? ''; ubahKoneksi.baseUrl = o?.runtime?.baseUrl ?? ''; ubahKoneksi.apiKey = '' }, { immediate: true })
+const simpanKoneksi = ref(false)
+async function simpanUbahKoneksi() {
+  const rt = org.value?.runtime
+  if (!rt) return
+  simpanKoneksi.value = true
+  try {
+    await $fetch(`/api/admin/runtimes/${rt.id}`, { method: 'PATCH', body: { name: ubahKoneksi.name || undefined, baseUrl: ubahKoneksi.baseUrl || undefined, apiKey: ubahKoneksi.apiKey || undefined } })
+    ubahKoneksi.apiKey = ''
+    toast.add({ title: 'Koneksi runtime diperbarui', description: 'Kunci webhook & secret tidak berubah; config Hermes tidak perlu disentuh.', color: 'success', icon: 'i-lucide-check' })
+    await probe(rt.id)
+  } catch (e) { toast.add({ title: 'Gagal memperbarui koneksi', description: galat(e), color: 'error', icon: 'i-lucide-triangle-alert' }) } finally { simpanKoneksi.value = false }
+}
 const memprobe = ref(false)
 async function probe(id: string) {
   memprobe.value = true
@@ -222,8 +237,15 @@ function blokConfig(url: string) {
             </template>
           </UAlert>
 
+          <form v-if="org.runtime" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6" @submit.prevent="simpanUbahKoneksi">
+            <p class="sm:col-span-2 text-xs font-semibold text-muted uppercase tracking-wider">Ubah koneksi (tanpa rotasi kunci webhook & secret)</p>
+            <UInput v-model="ubahKoneksi.name" placeholder="nama runtime" size="sm" />
+            <UInput v-model="ubahKoneksi.baseUrl" placeholder="base URL baru, mis. http://100.64.0.5:8642 (tunnel)" size="sm" />
+            <UInput v-model="ubahKoneksi.apiKey" type="password" placeholder="API_SERVER_KEY baru (kosongkan = tetap)" size="sm" minlength="16" />
+            <div class="flex items-center gap-2"><UButton type="submit" size="sm" variant="outline" color="neutral" icon="i-lucide-link-2" label="Simpan & probe" :loading="simpanKoneksi" /><span class="text-xs text-muted">URL webhook & secret HMAC di Hermes tetap sama.</span></div>
+          </form>
           <form class="grid grid-cols-1 sm:grid-cols-2 gap-2" @submit.prevent="pasangRuntime">
-            <p class="sm:col-span-2 text-xs font-semibold text-muted uppercase tracking-wider">{{ org.runtime ? 'Pasang ulang runtime (kunci & secret baru)' : 'Pasang runtime' }}</p>
+            <p class="sm:col-span-2 text-xs font-semibold text-muted uppercase tracking-wider">{{ org.runtime ? 'Pasang ulang runtime (kunci & secret BARU; config Hermes harus diupdate)' : 'Pasang runtime' }}</p>
             <UInput v-model="runtimeBaru.name" placeholder="nama runtime" size="sm" required />
             <UInput v-model="runtimeBaru.baseUrl" placeholder="base URL API server, mis. http://10.0.0.5:8642 (harus terjangkau dari control plane)" size="sm" required />
             <UInput v-model="runtimeBaru.apiKey" type="password" placeholder="API_SERVER_KEY Hermes (≥16 karakter)" size="sm" required minlength="16" />

@@ -33,6 +33,10 @@ hermes --version
 `config.yaml` siap-salin tampil **sekali**; tombol **Probe /v1/capabilities** mengecek koneksi + membaca fitur runtime.
 Tidak perlu terminal atau membagikan password admin ke siapa pun.
 
+Kalau nanti base URL berubah (mis. tunnel dipasang) atau `API_SERVER_KEY` diganti, pakai form **Ubah koneksi** di kartu yang sama
+(`PATCH /api/admin/runtimes/<id>`): URL webhook dan secret HMAC **tidak** dirotasi, jadi `config.yaml`/`.env` Hermes tidak perlu
+disentuh. **Pasang ulang runtime** sebaliknya membuat kunci + secret baru.
+
 Alternatif via API (sesi admin → `cookie.txt`):
 ```bash
 curl -sS -X POST https://<control-plane>/api/admin/runtimes \

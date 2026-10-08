@@ -222,3 +222,20 @@ test('ASSIGN_TASK ditolak bila organisasi belum punya runtime', async () => {
   const cmd = (await userB(`/api/orgs/${orgB.id}/commands`)).data.find(c => c.taskId === kirim.data.taskId)
   assert.equal(cmd.state, 'REJECTED'); assert.match(cmd.lastError, /belum dipasang/)
 })
+
+test('ubah base URL runtime tanpa rotasi kunci: webhook lama tetap diterima, kapabilitas dibaca ulang', async () => {
+  assert.equal((await userA(`/api/admin/runtimes/${runtime.id}`, { method: 'PATCH', body: { baseUrl: 'http://127.0.0.1:1' } })).status, 403)
+  const mati = await admin(`/api/admin/runtimes/${runtime.id}`, { method: 'PATCH', body: { baseUrl: 'http://127.0.0.1:1/' } })
+  assert.equal(mati.status, 200); assert.equal(mati.data.runtime.baseUrl, 'http://127.0.0.1:1'); assert.equal(mati.data.runtime.status, 'unknown')
+  assert.equal((await admin(`/api/admin/runtimes/${runtime.id}/probe`, { method: 'POST' })).status, 502)
+  assert.equal((await userA(`/api/orgs/${orgA.id}/runtime`)).data.status, 'offline')
+  // kembalikan ke runtime uji: probe sukses, dan webhook dengan kunci+secret LAMA masih sah
+  const balik = await admin(`/api/admin/runtimes/${runtime.id}`, { method: 'PATCH', body: { baseUrl: hermesUrl, name: 'utama-2' } })
+  assert.equal(balik.data.runtime.name, 'utama-2')
+  assert.equal((await admin(`/api/admin/runtimes/${runtime.id}/probe`, { method: 'POST' })).data.ok, true)
+  const sesudah = (await userA(`/api/orgs/${orgA.id}/runtime`)).data
+  assert.equal(sesudah.status, 'online'); assert.equal(sesudah.fitur.run_submission, true)
+  const wh = await kirimOutbound('on_session_start', { session_id: 'sesi-setelah-ubah-url' })
+  assert.ok(wh.status === 200 || wh.status === 202, `webhook lama harus tetap diterima, dapat ${wh.status}`)
+  assert.equal((await admin(`/api/admin/runtimes/${runtime.id}`, { method: 'PATCH', body: {} })).status, 400)
+})
