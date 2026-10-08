@@ -23,7 +23,7 @@ Font: Inter / system. Angka metrik `tabular-nums` (`tnum`). Fokus keyboard: outl
 
 ## Arsitektur informasi (navigasi)
 1. **Pusat Komando** `/` — KPI, komposer perintah (live), tugas aktif, aktivitas, persetujuan, kesehatan runtime, roster AI employee.
-2. Kantor Virtual `/kantor` — kartu AI employee per departemen (placeholder, menunggu review).
+2. **Kantor Virtual** `/kantor` — kantor 3D isometrik (Three.js/TresJS): gedung pusat supervisor, zona heksagonal per departemen, meja + layar, karakter low-poly per AI employee, label nama + status; klik → laci profil → laci tugas. Keputusan Asyam 8 Okt (mengganti rencana 2D PRD §10). Warna per departemen di `app/utils/kantor3d.ts`; cyan hanya untuk run berjalan.
 3. Papan Tugas `/tugas` — tabel/kanban status (placeholder).
 4. Persetujuan `/persetujuan` (placeholder). 5. Kesehatan Runtime `/runtime` (placeholder). 6. Pengaturan `/pengaturan` (placeholder).
 Top bar: pemilih perusahaan (`USelectMenu`), mode warna, menu pengguna. Mobile: `USlideover`. Banner DEMO global saat demo.
@@ -52,7 +52,7 @@ SSE tanpa `json`), `ApprovalRingkas[]` (`GET /api/orgs/:id/approvals`), `BuatPer
 
 ## Ketergantungan backend yang masih terbuka
 - Konsumsi SSE di klien (`EventSource`) untuk timeline realtime; saat ini `refresh` manual + poll.
-- Layar 2–5 (Kantor Virtual, Papan Tugas, Detail Tugas, Profil Agen) menunggu review.
+- Layar 3–5 (Papan Tugas, Detail Tugas penuh, Profil Agen penuh) menunggu review. Kantor Virtual 3D: `docs/design/screens/kantor-*.png`.
 - Metrik finansial: belum ada sumber (ditampilkan "Belum tersambung").
 
 ## Screenshot

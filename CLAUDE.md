@@ -23,6 +23,11 @@ engine agent. Sumber kebenaran arsitektur & keamanan: PRD "Hermes Virtual Office
    dari kunci URL + HMAC per runtime, tidak pernah dari body.
 5. **Rahasia** (API key runtime, secret outbound) terenkripsi AES-GCM di DB; tool input/output diredaksi sebelum tampil.
 
+## Keputusan yang mengubah PRD
+- **Kantor Virtual = 3D interaktif** (Asyam, 8 Okt 2026; PRD §02/§10 semula menunda 3D). Dibangun dengan Three.js + TresJS
+  (`app/components/kantor/*`, `app/utils/kantor3d.ts`). Invarian #1 tetap: karakter bergerak/menyala hanya bila
+  `runAktif > 0` dari `agent_runs`; tidak ada animasi "sibuk" acak, tidak ada gelembung pikiran palsu.
+
 ## Perintah
 ```
 npm install && cp .env.example .env     # isi DATABASE_URL, ENCRYPTION_KEY, NUXT_SESSION_PASSWORD

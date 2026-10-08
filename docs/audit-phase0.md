@@ -200,7 +200,7 @@ Keputusan desain: **repo & DB baru** (`hermes-office`), bukan di `ceo-dashboard`
 - **G4**: usage/biaya hanya per `session_id` → atribusi biaya per task = Σ sesi (parent + child via `parent_session_id`).
 - **G5**: PRD minta Next.js + Redis; rekomendasi Nuxt + Postgres queue untuk pilot (keputusan).
 - **G6**: Docker compose default `network_mode: host` + API server mati → butuh compose khusus tenant (port privat, key).
-- **R-UI**: Design brief melarang ilustrasi kantor kartun sebagai dashboard default → gambar isometrik yang dikirim **tidak** dipakai sebagai layar utama; cukup roster/department cards (PRD §10).
+- **R-UI**: Design brief melarang ilustrasi kantor kartun sebagai dashboard default → dashboard default tetap Pusat Komando. **Update 8 Okt**: Asyam memutuskan halaman Kantor Virtual dibuat 3D interaktif (Three.js) mengikuti gambar isometrik; invarian "tidak ada aktivitas palsu" tetap berlaku (gerak/layar menyala hanya dari `agent_runs`).
 
 ---
 

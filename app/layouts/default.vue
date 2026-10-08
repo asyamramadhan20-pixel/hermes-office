@@ -77,8 +77,8 @@ const inisialPengguna = computed(() => (profilSaya.value?.user.name ?? 'P').spli
 
     <div class="flex-1 min-w-0 flex flex-col">
       <!-- Top bar -->
-      <header class="sticky top-0 z-20 h-16 bg-default/95 backdrop-blur border-b border-default">
-        <div class="h-full flex items-center gap-3 px-4 sm:px-6">
+      <header class="sticky top-0 z-20 bg-default/95 backdrop-blur border-b border-default">
+        <div class="h-16 flex items-center gap-3 px-4 sm:px-6">
           <UButton class="lg:hidden" variant="ghost" color="neutral" icon="i-lucide-menu" aria-label="Buka navigasi" @click="navBuka = true" />
           <p class="lg:hidden text-sm font-semibold text-highlighted truncate">{{ config.public.appName }}</p>
 

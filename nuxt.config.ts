@@ -1,6 +1,6 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-01',
-  modules: ['@nuxt/ui', 'nuxt-auth-utils'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@tresjs/nuxt'],
   css: ['~/assets/css/main.css'],
   ui: {
     theme: {
