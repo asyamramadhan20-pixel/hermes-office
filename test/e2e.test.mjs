@@ -72,6 +72,15 @@ test('isolasi tenant: B tidak bisa membaca/menulis data A; tanpa login 401', asy
   assert.equal((await userA(`/api/orgs/${orgB.id}/ringkasan`)).status, 404)
   assert.equal((await klien()(`/api/orgs/${orgA.id}/ringkasan`)).status, 401)
   assert.equal((await userA('/api/admin/orgs', { method: 'POST', body: { slug: 'org-x', name: 'X' } })).status, 403)
+  assert.equal((await userA('/api/admin/orgs')).status, 403)
+  assert.equal((await userA(`/api/admin/orgs/${orgA.id}/members`)).status, 403)
+  // halaman admin: daftar organisasi + ringkasan runtime, daftar anggota
+  const daftar = (await admin('/api/admin/orgs')).data
+  const a = daftar.find(o => o.id === orgA.id); const b = daftar.find(o => o.id === orgB.id)
+  assert.equal(a.anggota, 3); assert.equal(a.karyawan, 1); assert.equal(a.runtime?.baseUrl, hermesUrl)
+  assert.equal(b.anggota, 1); assert.equal(b.runtime, null)
+  const anggota = (await admin(`/api/admin/orgs/${orgA.id}/members`)).data
+  assert.deepEqual(anggota.map(x => x.role).sort(), ['approver', 'member', 'owner'])
   // approver tidak boleh mengirim tugas; owner tidak boleh menjawab approval
   assert.equal((await approverA(`/api/orgs/${orgA.id}/commands`, { method: 'POST', body: { type: 'ASSIGN_TASK', employeeId: karyawanA.id, title: 'Tugas', objective: 'Tujuan uji coba' } })).status, 403)
 })

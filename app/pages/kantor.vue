@@ -9,7 +9,7 @@ import type { Titik } from '~/utils/kantor3d'
 useHead({ title: 'Kantor Virtual' })
 
 const { demo, orgAktif, bolehAksi, profil, ringkasan, tugas, kirimPerintah } = useOffice()
-const { data: profilSaya } = profil()
+const { data: profilSaya } = await profil()
 const { data: ringkas, pending: memuat, error: galat, refresh: segarkan } = ringkasan(orgAktif)
 const { data: daftarTugas } = tugas(orgAktif)
 const toast = useToast()

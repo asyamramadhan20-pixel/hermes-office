@@ -19,6 +19,8 @@ export function useOffice() {
   const config = useRuntimeConfig()
   const mode: ModeOffice = config.public.officeMode === 'demo' ? 'demo' : 'live'
   const demo = mode === 'demo'
+  /** $fetch yang meneruskan cookie sesi saat SSR (tanpa ini, /api/* di server balas 401 dan data tidak pernah terisi). */
+  const ambil = useRequestFetch()
 
   /** Organisasi aktif; dipersistenkan di localStorage (klien). */
   const orgAktif = useState<string | null>(KUNCI_ORG, () => null)
@@ -39,13 +41,13 @@ export function useOffice() {
 
   function profil() {
     const hasil = useAsyncData<ProfilSaya>('office.profil', () =>
-      demo ? Promise.resolve(PROFIL_DEMO) : $fetch<ProfilSaya>('/api/me'))
+      demo ? Promise.resolve(PROFIL_DEMO) : ambil<ProfilSaya>('/api/me'))
     // Pilih organisasi pertama bila belum ada / tidak valid.
     watch(hasil.data, (p) => {
       if (!p) return
       const ada = p.organizations.some(o => o.id === orgAktif.value)
       if (!ada) orgAktif.value = p.organizations[0]?.id ?? null
-    }, { immediate: true })
+    }, { immediate: true, flush: 'sync' }) // sync: agar juga jalan saat SSR setelah `await profil()`
     return hasil
   }
 
@@ -55,7 +57,7 @@ export function useOffice() {
       () => `office.ringkasan.${id.value ?? 'none'}`,
       () => {
         if (!id.value) return Promise.resolve(null)
-        return demo ? Promise.resolve(RINGKASAN_DEMO) : $fetch<RingkasanOrg>(`/api/orgs/${id.value}/ringkasan`)
+        return demo ? Promise.resolve(RINGKASAN_DEMO) : ambil<RingkasanOrg>(`/api/orgs/${id.value}/ringkasan`)
       },
       { watch: [id] }
     )
@@ -67,7 +69,7 @@ export function useOffice() {
       () => `office.tugas.${id.value ?? 'none'}`,
       () => {
         if (!id.value) return Promise.resolve([])
-        return demo ? Promise.resolve(TUGAS_DEMO) : $fetch<TugasRingkas[]>(`/api/orgs/${id.value}/tasks`)
+        return demo ? Promise.resolve(TUGAS_DEMO) : ambil<TugasRingkas[]>(`/api/orgs/${id.value}/tasks`)
       },
       { watch: [id], default: () => [] }
     )
@@ -79,7 +81,7 @@ export function useOffice() {
       () => `office.events.${id.value ?? 'none'}`,
       () => {
         if (!id.value) return Promise.resolve([])
-        return demo ? Promise.resolve(RINGKASAN_DEMO.aktivitasTerbaru) : $fetch<EventRingkas[]>(`/api/orgs/${id.value}/events`, { query: { json: 1 } })
+        return demo ? Promise.resolve(RINGKASAN_DEMO.aktivitasTerbaru) : ambil<EventRingkas[]>(`/api/orgs/${id.value}/events`, { query: { json: 1 } })
       },
       { watch: [id], default: () => [] }
     )

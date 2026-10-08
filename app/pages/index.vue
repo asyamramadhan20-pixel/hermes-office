@@ -4,7 +4,7 @@ import type { BuatPerintah, TugasRingkas } from '~~/shared/kontrak'
 useHead({ title: 'Pusat Komando' })
 
 const { demo, orgAktif, bolehAksi, profil, ringkasan, tugas, kirimPerintah } = useOffice()
-const { data: profilSaya } = profil()
+const { data: profilSaya } = await profil()
 const { data: ringkas, pending: memuatRingkas, error: galatRingkas, refresh: segarkan } = ringkasan(orgAktif)
 const { data: daftarTugas, pending: memuatTugas } = tugas(orgAktif)
 const toast = useToast()

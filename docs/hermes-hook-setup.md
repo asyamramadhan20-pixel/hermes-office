@@ -27,7 +27,13 @@ hermes --version
 ```
 
 ## 1. Daftarkan runtime di control plane (dapat kunci webhook + secret)
-Login sebagai platform admin, lalu:
+**Cara termudah: lewat browser.** Login sebagai platform admin → menu **Pengaturan** → pilih organisasi → kartu
+**Runtime Hermes** → isi nama, base URL API server Hermes (harus terjangkau dari control plane), `API_SERVER_KEY`
+(≥16 karakter), secret HMAC (kosongkan = dibuat otomatis) → **Pasang & tampilkan kunci**. URL webhook, secret, dan blok
+`config.yaml` siap-salin tampil **sekali**; tombol **Probe /v1/capabilities** mengecek koneksi + membaca fitur runtime.
+Tidak perlu terminal atau membagikan password admin ke siapa pun.
+
+Alternatif via API (sesi admin → `cookie.txt`):
 ```bash
 curl -sS -X POST https://<control-plane>/api/admin/runtimes \
   -H 'Content-Type: application/json' -b cookie.txt \
@@ -44,8 +50,6 @@ Respons (hanya ditampilkan **sekali**, simpan):
 - `webhookUrl` → tujuan outbound webhook Hermes. Kuncinya hanya disimpan sebagai hash; kalau hilang, daftarkan ulang.
 - `outboundSecret` → kunci HMAC. Disimpan terenkripsi (AES-GCM) di control plane.
 - `apiKey` yang lo kirim harus **sama persis** dengan `API_SERVER_KEY` di langkah 2.
-
-> Belum ada UI admin untuk ini; sementara lewat curl (cookie sesi dari login di browser → `cookie.txt`).
 
 ## 2. Env runtime Hermes (`$HERMES_HOME/.env`, di container = `/opt/data/.env`)
 ```bash

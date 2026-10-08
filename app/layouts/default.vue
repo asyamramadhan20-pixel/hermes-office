@@ -5,7 +5,7 @@ const config = useRuntimeConfig()
 const colorMode = useColorMode()
 const route = useRoute()
 const { demo, orgAktif, profil } = useOffice()
-const { data: profilSaya } = profil()
+const { data: profilSaya } = await profil()
 
 const navBuka = ref(false)
 watch(() => route.path, () => { navBuka.value = false })
