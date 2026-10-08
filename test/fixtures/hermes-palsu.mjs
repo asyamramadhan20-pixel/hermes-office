@@ -37,7 +37,7 @@ export function buatHermesPalsu({ apiKey, outboundUrl, outboundSecret }) {
     if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
       return kirim(200, { object: 'hermes.api_server.capabilities', platform: 'hermes-agent', model: 'hermes-agent', version: 'test-double',
         auth: { type: 'bearer', required: true },
-        features: { chat_completions: true, responses_api: true, run_submission: true, run_status: true, run_events_sse: true, run_stop: true, run_approval: true } })
+        features: { chat_completions: true, responses_api: true, run_submission: true, run_status: true, run_events_sse: true, run_stop: true, run_approval_response: true } })
     }
     if (req.method === 'POST' && url.pathname === '/v1/runs') {
       const key = req.headers['idempotency-key']

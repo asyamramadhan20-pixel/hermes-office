@@ -23,7 +23,7 @@ const LABEL_FITUR: Record<string, string> = {
   run_status: 'Status run',
   run_events_sse: 'Event SSE',
   run_stop: 'Hentikan run',
-  run_approval: 'Persetujuan'
+  run_approval_response: 'Persetujuan'
 }
 const fitur = computed(() => Object.entries(props.runtime?.fitur ?? {}).map(([k, v]) => ({ kunci: k, label: LABEL_FITUR[k] ?? k, aktif: v })))
 </script>

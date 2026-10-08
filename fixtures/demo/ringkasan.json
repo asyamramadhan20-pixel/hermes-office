@@ -28,7 +28,7 @@
       "run_status": true,
       "run_events_sse": true,
       "run_stop": true,
-      "run_approval": true
+      "run_approval_response": true
     },
     "menitSejakEventTerakhir": 3
   },

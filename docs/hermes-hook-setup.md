@@ -113,7 +113,7 @@ Log yang diharapkan saat start: `outbound webhook registered: on_session_start -
 ```bash
 # 1) kapabilitas runtime terbaca (admin)
 curl -sS -X POST https://<control-plane>/api/admin/runtimes/<runtime id>/probe -b cookie.txt
-# → {"ok":true,"capabilities":{"features":{"run_submission":true,"run_status":true,"run_stop":true,"run_approval":true,...}}}
+# → {"ok":true,"capabilities":{"features":{"run_submission":true,"run_status":true,"run_stop":true,"run_approval_response":true,...}}}
 
 # 2) event webhook masuk: Pusat Komando → "Kesehatan runtime" → "Event terakhir" berubah,
 #    atau cek tabel webhook_inbox (signature_ok = true, processed_at terisi, error kosong).

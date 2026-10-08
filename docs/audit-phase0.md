@@ -95,7 +95,7 @@ Status: **V** = ada di source & docs; **C** = ada tapi tergantung konfigurasi/ve
 | `POST /v1/runs/{id}/stop` → `{status:"stopping"}`; terminal → `run.cancelled`; 409 `run_not_active` | V | `api_server_runs.py:1253-1274`; interrupt core `agent/interrupt_control.py:128-236` |
 | `POST /v1/runs/{id}/approval` body `choice: once|session|always|deny`, `request_id`, `all` | V | `api_server_runs.py:1165-1216` |
 | `POST /v1/runs/{id}/steer` | V | `api_server_runs.py:1219-1250` |
-| `GET /v1/capabilities` (deteksi fitur: `run_submission, run_status, run_events_sse, run_stop, run_approval, session_*`) | V | `api_server.py:68-102` |
+| `GET /v1/capabilities` (deteksi fitur: `run_submission, run_status, run_events_sse, run_stop, run_approval_response, session_*; `run_approval` hanya nama endpoint`) | V | `api_server.py:68-102` |
 | Sessions REST `/api/sessions` (list/create/get/messages/fork/chat/chat/stream) | V | `api_server.py:1736-1745, 3570-3615` |
 | Jobs REST `/api/jobs` (cron) | V | `api_server.py:1753-1760` |
 | Multi-profile `/p/<profile>/…` dengan key per profil | V (tidak dipakai; 1 container/tenant) | `gateway/config.py:46-60`; `api_server.py:36-43` |

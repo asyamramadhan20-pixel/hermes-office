@@ -88,7 +88,7 @@ export function buatKlienHermes(baseUrl: string, apiKey: string, fetchImpl: type
 
 /** Fitur yang wajib true di `/v1/capabilities.features` untuk tiap operasi. */
 export const FITUR_WAJIB = {
-  buatRun: 'run_submission', statusRun: 'run_status', hentikanRun: 'run_stop', jawabApproval: 'run_approval'
+  buatRun: 'run_submission', statusRun: 'run_status', hentikanRun: 'run_stop', jawabApproval: 'run_approval_response'
 } as const
 
 export function pastikanFitur(cap: Record<string, unknown> | null | undefined, fitur: string) {
