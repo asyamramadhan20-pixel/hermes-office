@@ -24,12 +24,10 @@ const warnaIkon: Record<string, string> = {
 <template>
   <div class="bg-default ring-1 ring-default rounded-lg p-4 sm:p-5 flex flex-col gap-3 min-w-0" role="group" :aria-label="label">
     <div class="flex items-start justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <UIcon :name="icon" :class="['size-4 shrink-0', warnaIkon[nada]]" aria-hidden="true" />
-        <span class="text-sm font-medium text-muted truncate">{{ label }}</span>
-      </div>
-      <BadgeDemo v-if="demo" />
+      <UIcon :name="icon" :class="['size-4 shrink-0 mt-0.5', warnaIkon[nada]]" aria-hidden="true" />
+      <BadgeDemo v-if="demo" class="shrink-0" />
     </div>
+    <span class="text-sm font-medium text-muted leading-snug line-clamp-2 -mt-1">{{ label }}</span>
 
     <template v-if="belumTersambung">
       <div class="flex items-center gap-2 text-highlighted">

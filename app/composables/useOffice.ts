@@ -79,7 +79,7 @@ export function useOffice() {
       () => `office.events.${id.value ?? 'none'}`,
       () => {
         if (!id.value) return Promise.resolve([])
-        return demo ? Promise.resolve(RINGKASAN_DEMO.aktivitasTerbaru) : $fetch<EventRingkas[]>(`/api/orgs/${id.value}/events`)
+        return demo ? Promise.resolve(RINGKASAN_DEMO.aktivitasTerbaru) : $fetch<EventRingkas[]>(`/api/orgs/${id.value}/events`, { query: { json: 1 } })
       },
       { watch: [id], default: () => [] }
     )
@@ -97,9 +97,9 @@ export function useOffice() {
   const bolehApproval = computed(() => mode === 'live' && !!peranAktif.value && PERAN_BOLEH_APPROVAL.includes(peranAktif.value))
 
   /** Kirim command ke control plane (hanya live). */
-  async function kirimPerintah(orgId: string, body: BuatPerintah): Promise<PerintahRingkas> {
+  async function kirimPerintah(orgId: string, body: BuatPerintah): Promise<{ command: PerintahRingkas, taskId: string | null }> {
     if (demo) throw new Error('Mode demo: aksi dinonaktifkan')
-    return $fetch<PerintahRingkas>(`/api/orgs/${orgId}/commands`, { method: 'POST', body })
+    return $fetch<{ command: PerintahRingkas, taskId: string | null }>(`/api/orgs/${orgId}/commands`, { method: 'POST', body })
   }
 
   return { mode, demo, orgAktif, peranAktif, bolehAksi, bolehApproval, profil, ringkasan, tugas, events, kirimPerintah }

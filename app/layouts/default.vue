@@ -43,7 +43,7 @@ const menuPengguna = computed<DropdownMenuItem[][]>(() => [
   [{ label: 'Keluar', icon: 'i-lucide-log-out', onSelect: () => { void keluar() } }]
 ])
 
-const inisialPengguna = computed(() => (profilSaya.value?.user.name ?? 'P').split(/\s+/).map(s => s[0]).join('').slice(0, 2).toUpperCase())
+const inisialPengguna = computed(() => (profilSaya.value?.user.name ?? 'P').split(/\s+/).map(s => s.replace(/[^\p{L}\p{N}]/gu, '')[0] ?? '').join('').slice(0, 2).toUpperCase() || 'P')
 </script>
 
 <template>

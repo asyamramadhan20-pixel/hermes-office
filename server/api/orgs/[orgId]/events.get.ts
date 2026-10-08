@@ -10,6 +10,12 @@ import { keEventRingkas } from '~~/server/utils/ringkasan'
 export default defineEventHandler(async (event) => {
   const { org } = await wajibAnggota(event, orgIdDariRoute(event))
   const q = getQuery(event)
+  if (q.json) {
+    // Cabang non-stream untuk klien yang hanya butuh daftar terakhir.
+    const baris = await useDb().select().from(schema.taskEvents).where(eq(schema.taskEvents.organizationId, org.id))
+      .orderBy(desc(schema.taskEvents.occurredAt)).limit(Number(q.limit) > 0 ? Math.min(Number(q.limit), 500) : 100)
+    return baris.map(keEventRingkas)
+  }
   let sejak = typeof q.since === 'string' && Number.isFinite(Date.parse(q.since)) ? new Date(q.since) : new Date()
   const stream = createEventStream(event)
   const db = useDb()
