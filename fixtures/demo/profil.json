@@ -1,0 +1,6 @@
+{
+  "user": { "id": "usr_demo_asyam", "email": "demo@contoh-sehat.id", "name": "Asyam (Demo)", "isPlatformAdmin": false },
+  "organizations": [
+    { "id": "org_demo_contoh", "slug": "pt-contoh-sehat", "name": "PT Contoh Sehat", "role": "owner" }
+  ]
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "tsk_demo_001", "title": "Optimasi anggaran kampanye Meta minggu ini", "status": "RUNNING", "priority": 2,
+    "employee": { "id": "emp_demo_rafa", "name": "Rafa" },
+    "createdAt": "2026-10-08T01:40:00Z", "startedAt": "2026-10-08T01:42:00Z", "finishedAt": null,
+    "outputSummary": null, "lastError": null,
+    "runUtama": { "id": "run_demo_101", "hermesRunId": "hr_6f2a19", "status": "running" }
+  },
+  {
+    "id": "tsk_demo_002", "title": "Kirim broadcast WhatsApp ke 120 pelanggan paket RTS", "status": "WAITING_APPROVAL", "priority": 1,
+    "employee": { "id": "emp_demo_nadia", "name": "Nadia" },
+    "createdAt": "2026-10-08T00:55:00Z", "startedAt": "2026-10-08T00:57:00Z", "finishedAt": null,
+    "outputSummary": null, "lastError": null,
+    "runUtama": { "id": "run_demo_102", "hermesRunId": "hr_b81c3d", "status": "waiting_for_approval" }
+  },
+  {
+    "id": "tsk_demo_003", "title": "Rekap omset harian 6 Oktober dari Mengantar", "status": "COMPLETED", "priority": 2,
+    "employee": { "id": "emp_demo_bima", "name": "Bima" },
+    "createdAt": "2026-10-07T00:10:00Z", "startedAt": "2026-10-07T00:11:00Z", "finishedAt": "2026-10-07T00:19:00Z",
+    "outputSummary": "Rekap 6 Okt: 312 resi dibuat, omset kotor Rp41,8 jt, 9 resi RTS. File rekap disimpan ke folder Keuangan/2026-10.",
+    "lastError": null,
+    "runUtama": { "id": "run_demo_103", "hermesRunId": "hr_0c77e2", "status": "completed" }
+  },
+  {
+    "id": "tsk_demo_004", "title": "Ringkas keluhan pelanggan 7 hari terakhir", "status": "COMPLETED", "priority": 3,
+    "employee": { "id": "emp_demo_nadia", "name": "Nadia" },
+    "createdAt": "2026-10-06T03:00:00Z", "startedAt": "2026-10-06T03:01:00Z", "finishedAt": "2026-10-06T03:14:00Z",
+    "outputSummary": "27 keluhan: 15 keterlambatan kurir, 7 paket rusak, 5 salah alamat. Tiga kasus perlu tindak lanjut manual.",
+    "lastError": null,
+    "runUtama": { "id": "run_demo_104", "hermesRunId": "hr_91d0aa", "status": "completed" }
+  },
+  {
+    "id": "tsk_demo_005", "title": "Tarik laporan resi Mengantar 1–7 Oktober", "status": "FAILED", "priority": 2,
+    "employee": { "id": "emp_demo_sari", "name": "Sari" },
+    "createdAt": "2026-10-07T06:30:00Z", "startedAt": "2026-10-07T06:31:00Z", "finishedAt": "2026-10-07T06:36:00Z",
+    "outputSummary": null,
+    "lastError": "Runtime: HTTP 504 dari API Mengantar setelah 3 kali percobaan",
+    "runUtama": { "id": "run_demo_105", "hermesRunId": "hr_44e1f8", "status": "failed" }
+  },
+  {
+    "id": "tsk_demo_006", "title": "Buat 10 variasi headline iklan Shooting Gel Cream", "status": "CANCEL_REQUESTED", "priority": 3,
+    "employee": { "id": "emp_demo_dimas", "name": "Dimas" },
+    "createdAt": "2026-10-08T02:05:00Z", "startedAt": "2026-10-08T02:06:00Z", "finishedAt": null,
+    "outputSummary": null, "lastError": null,
+    "runUtama": { "id": "run_demo_106", "hermesRunId": "hr_2e9b60", "status": "stopping" }
+  },
+  {
+    "id": "tsk_demo_007", "title": "Audit ongkir RTS pengembalian September", "status": "UNKNOWN", "priority": 2,
+    "employee": { "id": "emp_demo_bima", "name": "Bima" },
+    "createdAt": "2026-10-07T09:00:00Z", "startedAt": "2026-10-07T09:02:00Z", "finishedAt": null,
+    "outputSummary": null,
+    "lastError": "Runtime tidak mengirim event sejak 07 Okt 09.40 WIB; menunggu rekonsiliasi",
+    "runUtama": { "id": "run_demo_107", "hermesRunId": "hr_7a5c21", "status": "unknown" }
+  },
+  {
+    "id": "tsk_demo_008", "title": "Susun jadwal follow-up pelanggan unpaid hari ini", "status": "QUEUED", "priority": 3,
+    "employee": { "id": "emp_demo_nadia", "name": "Nadia" },
+    "createdAt": "2026-10-08T02:20:00Z", "startedAt": null, "finishedAt": null,
+    "outputSummary": null, "lastError": null,
+    "runUtama": { "id": "run_demo_108", "hermesRunId": null, "status": "queued" }
+  }
+]

@@ -1,0 +1,246 @@
+{
+  "demo": true,
+  "org": {
+    "id": "org_demo_contoh",
+    "slug": "pt-contoh-sehat",
+    "name": "PT Contoh Sehat",
+    "role": "owner"
+  },
+  "dihitungPada": "2026-10-08T02:30:00Z",
+  "tugas": {
+    "total": 8,
+    "berjalan": 1,
+    "menungguApproval": 1,
+    "selesai7Hari": 2,
+    "gagal7Hari": 1,
+    "tidakDiketahui": 1
+  },
+  "approvalTertunda": 1,
+  "runtime": {
+    "terpasang": true,
+    "name": "hermes-contoh-sehat-01",
+    "status": "online",
+    "hermesVersion": "0.9.4",
+    "lastSeenAt": "2026-10-08T02:28:00Z",
+    "lastError": null,
+    "fitur": {
+      "run_submission": true,
+      "run_status": true,
+      "run_events_sse": true,
+      "run_stop": true,
+      "run_approval": true
+    },
+    "menitSejakEventTerakhir": 3
+  },
+  "karyawan": [
+    {
+      "id": "emp_demo_masterceo",
+      "name": "MasterCEO",
+      "jobTitle": "Supervisor",
+      "department": "Manajemen",
+      "specialization": "Koordinasi & delegasi tugas",
+      "isSupervisor": true,
+      "isActive": true,
+      "runAktif": 0,
+      "terakhirTerlihat": "2026-10-08T02:20:00Z",
+      "tugasAktif": null
+    },
+    {
+      "id": "emp_demo_rafa",
+      "name": "Rafa",
+      "jobTitle": "Spesialis Iklan Meta",
+      "department": "Iklan",
+      "specialization": "Optimasi anggaran & kreatif",
+      "isSupervisor": false,
+      "isActive": true,
+      "runAktif": 1,
+      "terakhirTerlihat": "2026-10-08T02:27:00Z",
+      "tugasAktif": {
+        "id": "tsk_demo_001",
+        "title": "Optimasi anggaran kampanye Meta minggu ini",
+        "status": "RUNNING"
+      }
+    },
+    {
+      "id": "emp_demo_nadia",
+      "name": "Nadia",
+      "jobTitle": "Customer Service Lead",
+      "department": "CS",
+      "specialization": "Follow-up & keluhan pelanggan",
+      "isSupervisor": false,
+      "isActive": true,
+      "runAktif": 1,
+      "terakhirTerlihat": "2026-10-08T02:12:00Z",
+      "tugasAktif": {
+        "id": "tsk_demo_002",
+        "title": "Kirim broadcast WhatsApp ke 120 pelanggan paket RTS",
+        "status": "WAITING_APPROVAL"
+      }
+    },
+    {
+      "id": "emp_demo_bima",
+      "name": "Bima",
+      "jobTitle": "Analis Keuangan",
+      "department": "Keuangan",
+      "specialization": "Rekonsiliasi omset & ongkir",
+      "isSupervisor": false,
+      "isActive": true,
+      "runAktif": 1,
+      "terakhirTerlihat": "2026-10-07T09:40:00Z",
+      "tugasAktif": {
+        "id": "tsk_demo_007",
+        "title": "Audit ongkir RTS pengembalian September",
+        "status": "UNKNOWN"
+      }
+    },
+    {
+      "id": "emp_demo_sari",
+      "name": "Sari",
+      "jobTitle": "Koordinator Pengiriman",
+      "department": "Operasional",
+      "specialization": "Pelacakan resi & RTS",
+      "isSupervisor": false,
+      "isActive": true,
+      "runAktif": 0,
+      "terakhirTerlihat": "2026-10-07T06:36:00Z",
+      "tugasAktif": null
+    },
+    {
+      "id": "emp_demo_dimas",
+      "name": "Dimas",
+      "jobTitle": "Copywriter Iklan",
+      "department": "Iklan",
+      "specialization": "Headline & naskah iklan",
+      "isSupervisor": false,
+      "isActive": true,
+      "runAktif": 1,
+      "terakhirTerlihat": "2026-10-08T02:25:00Z",
+      "tugasAktif": {
+        "id": "tsk_demo_006",
+        "title": "Buat 10 variasi headline iklan Shooting Gel Cream",
+        "status": "CANCEL_REQUESTED"
+      }
+    }
+  ],
+  "aktivitasTerbaru": [
+    {
+      "id": "evt_demo_010",
+      "taskId": "tsk_demo_001",
+      "runId": "run_demo_101",
+      "sourceEventType": "tool.completed",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T02:27:00Z",
+      "data": {
+        "tool": "meta_ads.read_insights",
+        "durationMs": 1840,
+        "status": "ok"
+      }
+    },
+    {
+      "id": "evt_demo_009",
+      "taskId": "tsk_demo_006",
+      "runId": "run_demo_106",
+      "sourceEventType": "poll.status",
+      "source": "poll",
+      "occurredAt": "2026-10-08T02:25:00Z",
+      "data": {
+        "status": "stopping"
+      }
+    },
+    {
+      "id": "evt_demo_008",
+      "taskId": "tsk_demo_001",
+      "runId": "run_demo_101",
+      "sourceEventType": "subagent.finished",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T02:21:00Z",
+      "data": {
+        "subagent": "analis-kampanye",
+        "durationMs": 212000,
+        "status": "ok"
+      }
+    },
+    {
+      "id": "evt_demo_007",
+      "taskId": "tsk_demo_008",
+      "runId": null,
+      "sourceEventType": "command.persisted",
+      "source": "command",
+      "occurredAt": "2026-10-08T02:20:00Z",
+      "data": {
+        "type": "ASSIGN_TASK",
+        "state": "QUEUED"
+      }
+    },
+    {
+      "id": "evt_demo_006",
+      "taskId": "tsk_demo_006",
+      "runId": "run_demo_106",
+      "sourceEventType": "command.persisted",
+      "source": "command",
+      "occurredAt": "2026-10-08T02:18:00Z",
+      "data": {
+        "type": "REQUEST_CANCEL",
+        "state": "ACCEPTED"
+      }
+    },
+    {
+      "id": "evt_demo_005",
+      "taskId": "tsk_demo_001",
+      "runId": "run_demo_101",
+      "sourceEventType": "subagent.started",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T02:17:00Z",
+      "data": {
+        "subagent": "analis-kampanye"
+      }
+    },
+    {
+      "id": "evt_demo_004",
+      "taskId": "tsk_demo_006",
+      "runId": "run_demo_106",
+      "sourceEventType": "session.started",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T02:06:00Z",
+      "data": {
+        "model": "hermes-default"
+      }
+    },
+    {
+      "id": "evt_demo_003",
+      "taskId": "tsk_demo_001",
+      "runId": "run_demo_101",
+      "sourceEventType": "session.started",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T01:42:00Z",
+      "data": {
+        "model": "hermes-default"
+      }
+    },
+    {
+      "id": "evt_demo_002",
+      "taskId": "tsk_demo_002",
+      "runId": "run_demo_102",
+      "sourceEventType": "approval.requested",
+      "source": "webhook",
+      "occurredAt": "2026-10-08T01:12:00Z",
+      "data": {
+        "approvalId": "apr_demo_301",
+        "riskClass": "outbound_message",
+        "command": "whatsapp.broadcast"
+      }
+    },
+    {
+      "id": "evt_demo_001",
+      "taskId": "tsk_demo_003",
+      "runId": "run_demo_103",
+      "sourceEventType": "run.completed",
+      "source": "webhook",
+      "occurredAt": "2026-10-07T00:19:00Z",
+      "data": {
+        "status": "completed",
+        "durationMs": 480000
+      }
+    }
+  ]
+}

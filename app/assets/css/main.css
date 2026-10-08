@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+ * Token desain Hermes Virtual Office — lihat docs/design/tokens.md.
+ * graphite : netral dingin dibangun di sekitar #101319 (950) dan #F4F6F8 (50).
+ * brand    : ungu lembut #8C83F5 (500) sebagai aksen utama.
+ * cyan     : dipakai HANYA untuk indikator aktivitas "berjalan" (bawaan Tailwind).
+ */
+@theme static {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-graphite-50: #F4F6F8;
+  --color-graphite-100: #E9ECF0;
+  --color-graphite-200: #D5DAE1;
+  --color-graphite-300: #B4BBC7;
+  --color-graphite-400: #8A93A3;
+  --color-graphite-500: #667084;
+  --color-graphite-600: #4C5567;
+  --color-graphite-700: #363D4C;
+  --color-graphite-800: #232835;
+  --color-graphite-900: #181C25;
+  --color-graphite-950: #101319;
+
+  --color-brand-50: #F3F2FE;
+  --color-brand-100: #E8E6FD;
+  --color-brand-200: #D4D1FB;
+  --color-brand-300: #B8B3F8;
+  --color-brand-400: #A099F6;
+  --color-brand-500: #8C83F5;
+  --color-brand-600: #6F63EA;
+  --color-brand-700: #5A4DD0;
+  --color-brand-800: #493FA8;
+  --color-brand-900: #3C3585;
+  --color-brand-950: #241F52;
+}
+
+/* Penyesuaian variabel semantik Nuxt UI. `--ui-bg` = permukaan kartu, `--ui-bg-shell` = latar halaman. */
+:root, .light {
+  --ui-radius: 0.5rem;
+  --ui-bg-shell: var(--color-graphite-50);        /* #F4F6F8 */
+  --ui-bg: #ffffff;                                /* kartu putih */
+  --ui-bg-muted: var(--color-graphite-50);
+  --ui-bg-elevated: var(--color-graphite-100);
+  --ui-text: var(--color-graphite-700);
+  --ui-text-highlighted: var(--color-graphite-950);
+  --ui-text-muted: var(--color-graphite-500);
+  --ui-border: var(--color-graphite-200);
+  --ui-border-muted: var(--color-graphite-100);
+  --ui-border-accented: var(--color-graphite-300);
+  /* brand-600: kontras 4.6:1 di atas putih (AA teks normal). */
+  --ui-primary: var(--color-brand-600);
+}
+
+.dark {
+  --ui-bg-shell: var(--color-graphite-950);        /* #101319 */
+  --ui-bg: var(--color-graphite-900);              /* kartu sedikit lebih terang */
+  --ui-bg-muted: var(--color-graphite-800);
+  --ui-bg-elevated: var(--color-graphite-800);
+  --ui-text: var(--color-graphite-200);
+  --ui-text-highlighted: #ffffff;
+  --ui-text-muted: var(--color-graphite-400);
+  --ui-border: var(--color-graphite-800);
+  --ui-border-muted: var(--color-graphite-800);
+  --ui-border-accented: var(--color-graphite-700);
+  /* brand-400: kontras 7:1 di atas graphite-900. */
+  --ui-primary: var(--color-brand-400);
+}
+
+@layer base {
+  html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { background-color: var(--ui-bg-shell); color: var(--ui-text); }
+  /* Fokus keyboard yang selalu terlihat. */
+  :focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+@utility bg-shell { background-color: var(--ui-bg-shell); }
+/* Angka metrik: tabular agar kolom rata. */
+@utility tnum { font-variant-numeric: tabular-nums; }

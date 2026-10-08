@@ -1,0 +1,32 @@
+# Contoh 1 container Hermes per tenant. Ganti <slug> per perusahaan. Jalankan di VPS, bukan di Railway.
+# Image resmi hermes-agent (Dockerfile upstream: user `hermes` uid 10000, HERMES_HOME=/opt/data, PID1 s6).
+services:
+  hermes-<slug>:
+    image: nousresearch/hermes-agent:latest   # pin ke tag/commit yang sudah diaudit
+    container_name: hermes-<slug>
+    command: ["gateway", "run"]
+    env_file: ./tenants/<slug>/.env          # API_SERVER_*, HERMES_OUTBOUND_WEBHOOK_SECRET, kunci provider LLM
+    environment:
+      HERMES_HOME: /opt/data
+      HERMES_WRITE_SAFE_ROOT: /opt/data
+    volumes:
+      - ./tenants/<slug>/data:/opt/data       # HERMES_HOME terpisah per tenant; JANGAN dibagi
+    networks: [privat]
+    expose: ["8642"]                           # hanya di jaringan privat; tidak di-publish ke host publik
+    read_only: false
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    pids_limit: 512
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 4g }
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8642/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  privat:
+    internal: false   # egress ke provider LLM tetap perlu; batasi dengan firewall host (allowlist)

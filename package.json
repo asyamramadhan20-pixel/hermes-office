@@ -1,0 +1,44 @@
+{
+  "name": "hermes-office",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "start": "node scripts/migrate.mjs && node scripts/seed-admin.mjs --opsional && node .output/server/index.mjs",
+    "typecheck": "nuxt typecheck",
+    "test": "node test/jalankan.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:deploy": "node scripts/migrate.mjs",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "screenshot": "node scripts/screenshot.mjs",
+    "test:cepat": "node test/jalankan.mjs --no-build"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@nuxt/ui": "4.11.2",
+    "drizzle-orm": "^0.45.3",
+    "nuxt": "4.5.2",
+    "nuxt-auth-utils": "^0.5.30",
+    "postgres": "^3.4.7",
+    "vue": "3.5.24",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "1.2.90",
+    "@types/node": "^22.19.1",
+    "drizzle-kit": "^0.31.6",
+    "playwright-core": "^1.52.0",
+    "typescript": "5.9.3",
+    "vue-tsc": "3.2.2"
+  },
+  "overrides": {
+    "@nuxt/schema": "4.5.2",
+    "@nuxt/kit": "4.5.2"
+  }
+}
