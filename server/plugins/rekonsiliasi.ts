@@ -1,8 +1,9 @@
-import { and, eq, inArray, lt, or, isNull } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, or, isNull } from 'drizzle-orm'
 import { useDb, schema } from '~~/server/database/client'
 import { klienUntukOrganisasi, GalatRuntime } from '~~/server/utils/hermes-client'
 import { terapkanDariStatus } from '~~/server/utils/perintah'
 import { terapkanStatusRun } from '~~/server/utils/status-run'
+import { tutupRunEksternal } from '~~/server/utils/run-eksternal'
 
 const INTERVAL_MS = 60_000
 const BATAS_TIDAK_DIKETAHUI_MS = 15 * 60_000
@@ -46,6 +47,22 @@ export async function rekonsiliasiSekali(paksa = false) {
   }
 }
 
+/** Run eksternal (giliran sesi luar dashboard) tanpa event ≥30 menit: runtime diam ≠ selesai → UNKNOWN (bukan completed). */
+export const BATAS_EKSTERNAL_DIAM_MS = 30 * 60_000
+export async function tutupRunEksternalBasi(sekarang = Date.now()) {
+  const db = useDb()
+  const batas = new Date(sekarang - BATAS_EKSTERNAL_DIAM_MS)
+  const runs = await db.select().from(schema.agentRuns).where(and(
+    eq(schema.agentRuns.kind, 'external'), eq(schema.agentRuns.status, 'running'), isNull(schema.agentRuns.endedAt), lt(schema.agentRuns.createdAt, batas)
+  )).limit(100)
+  for (const run of runs) {
+    const [ev] = await db.select({ t: schema.taskEvents.occurredAt }).from(schema.taskEvents)
+      .where(eq(schema.taskEvents.runId, run.id)).orderBy(desc(schema.taskEvents.occurredAt)).limit(1)
+    if (ev && ev.t.getTime() >= batas.getTime()) continue
+    await tutupRunEksternal(run, 'unknown', new Date(sekarang), { sumber: 'system', alasan: 'tidak ada event ≥30 menit, on_session_end tidak diterima' })
+  }
+}
+
 export async function segarkanRuntime() {
   const db = useDb()
   const daftar = await db.select().from(schema.runtimeInstances)
@@ -70,7 +87,7 @@ export default defineNitroPlugin(() => {
   const tick = async () => {
     if (sibuk) return
     sibuk = true
-    try { await segarkanRuntime(); await rekonsiliasiSekali() } catch (e) { console.error('[rekonsiliasi]', e) } finally { sibuk = false }
+    try { await segarkanRuntime(); await rekonsiliasiSekali(); await tutupRunEksternalBasi() } catch (e) { console.error('[rekonsiliasi]', e) } finally { sibuk = false }
   }
   setTimeout(tick, 10_000)
   setInterval(tick, INTERVAL_MS)

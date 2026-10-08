@@ -18,7 +18,8 @@ export const jenisPerintahEnum = pgEnum('command_type', JENIS_PERINTAH)
 export const statePerintahEnum = pgEnum('command_state', STATE_PERINTAH)
 export const statusApprovalEnum = pgEnum('approval_status', STATUS_APPROVAL)
 export const statusRuntimeEnum = pgEnum('runtime_status', STATUS_RUNTIME)
-export const jenisRunEnum = pgEnum('run_kind', ['main', 'subagent'])
+/** external = giliran sesi Hermes yang TIDAK dimulai dari dashboard (Telegram/CLI), dipetakan lewat ai_employees.hermes_profile. */
+export const jenisRunEnum = pgEnum('run_kind', ['main', 'subagent', 'external'])
 export const sumberEventEnum = pgEnum('event_source', ['webhook', 'poll', 'command', 'system'])
 
 const waktu = (nama: string) => timestamp(nama, { withTimezone: true })
@@ -75,10 +76,12 @@ export const aiEmployees = pgTable('ai_employees', {
   allowedTools: jsonb('allowed_tools').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   /** MasterCEO = supervisor; hanya satu per tenant. */
   isSupervisor: boolean('is_supervisor').notNull().default(false),
+  /** Nama profil Hermes (`profile` di payload webhook) yang mewakili employee ini; sesi di luar dashboard dipetakan lewat ini. */
+  hermesProfile: text('hermes_profile'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: waktu('created_at').notNull().defaultNow(),
   updatedAt: waktu('updated_at').notNull().defaultNow()
-}, t => [index('ai_employees_org_idx').on(t.organizationId)])
+}, t => [index('ai_employees_org_idx').on(t.organizationId), uniqueIndex('ai_employees_org_profile_key').on(t.organizationId, t.hermesProfile)])
 
 /* ════════════ Runtime ════════════ */
 
@@ -126,6 +129,8 @@ export const tasks = pgTable('tasks', {
   objective: text('objective').notNull(),
   priority: integer('priority').notNull().default(3),
   status: statusTugasEnum('status').notNull().default('CREATED'),
+  /** dashboard = dibuat lewat ASSIGN_TASK; external = sesi Hermes dari luar (Telegram/CLI), tugasnya dibuat otomatis dari event. */
+  origin: text('origin').notNull().default('dashboard'),
   deadlineAt: waktu('deadline_at'),
   startedAt: waktu('started_at'),
   finishedAt: waktu('finished_at'),
@@ -250,7 +255,10 @@ export const webhookInbox = pgTable('webhook_inbox', {
   deliveryId: text('delivery_id').notNull(),
   eventName: text('event_name').notNull(),
   signatureOk: boolean('signature_ok').notNull(),
-  rawBody: text('raw_body').notNull(),
+  /** Body yang SUDAH disaring (server/utils/hermes-saring.ts): tanpa tool_input, extra.result, conversation_history, dll. */
+  body: jsonb('body').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  /** SHA-256 raw body untuk audit/duplikat; raw body sendiri tidak disimpan. */
+  bodyDigest: text('body_digest').notNull().default(''),
   headers: jsonb('headers').$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
   receivedAt: waktu('received_at').notNull().defaultNow(),
   processedAt: waktu('processed_at'),

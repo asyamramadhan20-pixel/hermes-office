@@ -5,6 +5,7 @@
  * Mode demo: hanya menampilkan petunjuk, tidak ada aksi.
  */
 import { PERAN_ORG } from '~~/shared/status'
+import type { KaryawanAI } from '~~/shared/kontrak'
 
 useHead({ title: 'Pengaturan' })
 const { demo, profil } = useOffice()
@@ -15,6 +16,8 @@ const adminPlatform = computed(() => !!profilSaya.value?.user.isPlatformAdmin)
 
 interface OrgAdmin {
   id: string, slug: string, name: string, isActive: boolean, createdAt: string, anggota: number, karyawan: number
+  /** Profil Hermes yang mengirim event tapi belum dipetakan ke AI employee. */
+  profilBelumDipetakan: { profile: string, n: number, terakhir: string }[]
   runtime: { id: string, name: string, baseUrl: string, status: string, hermesVersion: string | null, lastSeenAt: string | null, lastError: string | null, fitur: Record<string, boolean> | null } | null
 }
 const { data: orgs, refresh: segarkanOrg, pending: memuatOrg } = await useAsyncData<OrgAdmin[]>('admin.orgs', () => demo || !adminPlatform.value ? Promise.resolve([]) : ambil<OrgAdmin[]>('/api/admin/orgs'), { watch: [adminPlatform], default: () => [] })
@@ -58,17 +61,33 @@ async function tambahAnggota() {
 }
 
 /* ── AI employee ── */
-const karyawanBaru = reactive({ name: '', jobTitle: '', department: 'Umum', specialization: '', sop: '', isSupervisor: false })
+const karyawanBaru = reactive({ name: '', jobTitle: '', department: 'Umum', specialization: '', sop: '', isSupervisor: false, hermesProfile: '' })
 const simpanKaryawan = ref(false)
 async function tambahKaryawan() {
   if (!orgTerpilih.value) return
   simpanKaryawan.value = true
   try {
-    await $fetch(`/api/orgs/${orgTerpilih.value}/employees`, { method: 'POST', body: { ...karyawanBaru, specialization: karyawanBaru.specialization || undefined, sop: karyawanBaru.sop || undefined } })
+    await $fetch(`/api/orgs/${orgTerpilih.value}/employees`, { method: 'POST', body: { ...karyawanBaru, specialization: karyawanBaru.specialization || undefined, sop: karyawanBaru.sop || undefined, hermesProfile: karyawanBaru.hermesProfile || undefined } })
     toast.add({ title: 'AI employee terdaftar', description: `${karyawanBaru.name} · ${karyawanBaru.jobTitle}`, color: 'success', icon: 'i-lucide-check' })
-    karyawanBaru.name = ''; karyawanBaru.jobTitle = ''; karyawanBaru.specialization = ''; karyawanBaru.sop = ''; karyawanBaru.isSupervisor = false
-    await segarkanOrg()
+    karyawanBaru.name = ''; karyawanBaru.jobTitle = ''; karyawanBaru.specialization = ''; karyawanBaru.sop = ''; karyawanBaru.isSupervisor = false; karyawanBaru.hermesProfile = ''
+    await Promise.all([segarkanOrg(), segarkanKaryawan()])
   } catch (e) { toast.add({ title: 'Gagal mendaftarkan AI employee', description: galat(e) + ' (admin platform juga harus menjadi owner/manager organisasi ini)', color: 'error', icon: 'i-lucide-triangle-alert' }) } finally { simpanKaryawan.value = false }
+}
+
+/* ── pemetaan profil Hermes → AI employee ── */
+const { data: karyawan, refresh: segarkanKaryawan } = await useAsyncData<KaryawanAI[]>(() => `admin.karyawan.${orgTerpilih.value ?? 'none'}`, () => orgTerpilih.value && !demo ? ambil<KaryawanAI[]>(`/api/orgs/${orgTerpilih.value}/employees`) : Promise.resolve([]), { watch: [orgTerpilih], default: () => [] })
+const profilDraf = reactive<Record<string, string>>({})
+watch(karyawan, (d) => { for (const k of d) profilDraf[k.id] = k.hermesProfile ?? '' }, { immediate: true })
+const simpanProfilId = ref<string | null>(null)
+async function simpanProfil(k: KaryawanAI) {
+  if (!orgTerpilih.value) return
+  simpanProfilId.value = k.id
+  try {
+    const nilai = (profilDraf[k.id] ?? '').trim()
+    await $fetch(`/api/orgs/${orgTerpilih.value}/employees/${k.id}`, { method: 'PATCH', body: { hermesProfile: nilai || null } })
+    toast.add({ title: nilai ? `Profil "${nilai}" → ${k.name}` : `Pemetaan profil ${k.name} dilepas`, description: nilai ? 'Sesi Hermes dari profil ini sekarang tampil sebagai aktivitas employee ini di kantor.' : undefined, color: 'success', icon: 'i-lucide-check' })
+    await Promise.all([segarkanKaryawan(), segarkanOrg()])
+  } catch (e) { toast.add({ title: 'Gagal menyimpan pemetaan', description: galat(e), color: 'error', icon: 'i-lucide-triangle-alert' }) } finally { simpanProfilId.value = null }
 }
 
 /* ── runtime Hermes ── */
@@ -186,11 +205,36 @@ function blokConfig(url: string) {
             <UInput v-model="karyawanBaru.jobTitle" placeholder="jabatan, mis. Spesialis Iklan Meta" size="sm" required />
             <UInput v-model="karyawanBaru.department" placeholder="departemen, mis. Iklan" size="sm" required />
             <UInput v-model="karyawanBaru.specialization" placeholder="spesialisasi (opsional)" size="sm" />
+            <UInput v-model="karyawanBaru.hermesProfile" placeholder="profil Hermes, mis. masterceo (opsional)" size="sm" class="sm:col-span-2 font-mono" />
             <UTextarea v-model="karyawanBaru.sop" placeholder="SOP (dikirim sebagai instructions saat tugas diberikan)" :rows="3" size="sm" class="sm:col-span-2" />
             <UCheckbox v-model="karyawanBaru.isSupervisor" label="Supervisor (MasterCEO)" class="sm:col-span-2" />
             <UButton type="submit" size="sm" icon="i-lucide-plus" label="Daftarkan" :loading="simpanKaryawan" class="w-fit" />
           </form>
           <p class="text-xs text-muted mt-3">Endpoint ini memakai peran organisasi; pastikan akun admin juga anggota (owner/manager) organisasi ini.</p>
+        </UCard>
+
+        <!-- Pemetaan profil Hermes → AI employee -->
+        <UCard class="xl:col-span-2">
+          <template #header>
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <h2 class="text-sm font-semibold text-highlighted flex items-center gap-2"><UIcon name="i-lucide-link" class="size-4 text-muted" />Profil Hermes → AI employee · {{ org.name }}</h2>
+              <p class="text-xs text-muted">Sesi di luar dashboard (Telegram/CLI) tampil di kantor hanya untuk profil yang dipetakan.</p>
+            </div>
+          </template>
+          <div v-if="org.profilBelumDipetakan.length" class="mb-4">
+            <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">Terlihat mengirim event, belum dipetakan</p>
+            <div class="flex flex-wrap gap-1.5">
+              <UBadge v-for="p in org.profilBelumDipetakan" :key="p.profile" variant="soft" color="warning" size="sm" :label="`${p.profile} · ${p.n} event · ${waktuRelatif(p.terakhir)}`" class="font-mono" />
+            </div>
+          </div>
+          <ul v-if="karyawan.length" class="divide-y divide-default">
+            <li v-for="k in karyawan" :key="k.id" class="py-2 grid grid-cols-1 sm:grid-cols-[1fr_minmax(12rem,16rem)_auto] gap-2 items-center">
+              <span class="min-w-0 text-sm"><span class="font-medium text-highlighted">{{ k.name }}</span> <span class="text-muted">· {{ k.jobTitle }}</span><span v-if="!k.isActive" class="text-muted"> · nonaktif</span></span>
+              <UInput v-model="profilDraf[k.id]" placeholder="nama profil Hermes" size="sm" class="font-mono" :aria-label="`Profil Hermes untuk ${k.name}`" />
+              <UButton size="sm" variant="outline" color="neutral" icon="i-lucide-save" label="Simpan" :loading="simpanProfilId === k.id" :disabled="(profilDraf[k.id] ?? '') === (k.hermesProfile ?? '')" @click="simpanProfil(k)" />
+            </li>
+          </ul>
+          <p v-else class="text-sm text-muted">Belum ada AI employee di organisasi ini.</p>
         </UCard>
 
         <!-- Runtime Hermes -->

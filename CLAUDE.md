@@ -21,7 +21,11 @@ engine agent. Sumber kebenaran arsitektur & keamanan: PRD "Hermes Virtual Office
    Runtime diam ≠ selesai → `UNKNOWN` lalu rekonsiliasi.
 4. **Isolasi tenant.** Semua query/endpoint tenant lewat `wajibAnggota(event, orgId, peran)`; identitas runtime diambil
    dari kunci URL + HMAC per runtime, tidak pernah dari body.
-5. **Rahasia** (API key runtime, secret outbound) terenkripsi AES-GCM di DB; tool input/output diredaksi sebelum tampil.
+5. **Rahasia** (API key runtime, secret outbound) terenkripsi AES-GCM di DB. **Payload webhook tidak disimpan mentah**:
+   `webhook_inbox.body` = hasil `saringBodyHermes` (tanpa `tool_input`, `extra.result`, riwayat percakapan; daftar putih
+   metadata), raw hanya sebagai digest. Argumen/hasil tool tidak pernah tersimpan atau tampil.
+6. **Sesi di luar dashboard** (Telegram/CLI) masuk kantor hanya lewat pemetaan `ai_employees.hermes_profile` → run
+   `external` per giliran (`server/utils/run-eksternal.ts`); `on_session_end` = akhir giliran (Hermes memanggilnya tiap pesan).
 
 ## Keputusan yang mengubah PRD
 - **Kantor Virtual = 3D interaktif** (Asyam, 8 Okt 2026; PRD §02/§10 semula menunda 3D). Dibangun dengan Three.js + TresJS

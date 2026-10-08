@@ -40,7 +40,7 @@ export async function daftarKaryawan(orgId: string): Promise<KaryawanAI[]> {
       .where(eq(schema.agentRuns.employeeId, k.id)).orderBy(desc(schema.taskEvents.occurredAt)).limit(1)
     hasil.push({
       id: k.id, name: k.name, jobTitle: k.jobTitle, department: k.department, specialization: k.specialization,
-      isSupervisor: k.isSupervisor, isActive: k.isActive, runAktif: perKaryawan.get(k.id) ?? 0,
+      isSupervisor: k.isSupervisor, isActive: k.isActive, hermesProfile: k.hermesProfile, runAktif: perKaryawan.get(k.id) ?? 0,
       terakhirTerlihat: iso(ev?.t), tugasAktif: tugas ?? null
     })
   }
@@ -55,9 +55,9 @@ export async function daftarTugas(orgId: string, limit = 100): Promise<TugasRing
   const hasil: TugasRingkas[] = []
   for (const { t, kName } of baris) {
     const [run] = await db.select({ id: schema.agentRuns.id, hermesRunId: schema.agentRuns.hermesRunId, status: schema.agentRuns.status }).from(schema.agentRuns)
-      .where(and(eq(schema.agentRuns.taskId, t.id), eq(schema.agentRuns.kind, 'main'))).orderBy(desc(schema.agentRuns.createdAt)).limit(1)
+      .where(and(eq(schema.agentRuns.taskId, t.id), inArray(schema.agentRuns.kind, ['main', 'external']))).orderBy(desc(schema.agentRuns.createdAt)).limit(1)
     hasil.push({
-      id: t.id, title: t.title, status: t.status, priority: t.priority,
+      id: t.id, title: t.title, status: t.status, priority: t.priority, origin: t.origin as 'dashboard' | 'external',
       employee: t.employeeId ? { id: t.employeeId, name: kName ?? '(dihapus)' } : null,
       createdAt: t.createdAt.toISOString(), startedAt: iso(t.startedAt), finishedAt: iso(t.finishedAt),
       outputSummary: t.outputSummary, lastError: t.lastError, runUtama: run ?? null

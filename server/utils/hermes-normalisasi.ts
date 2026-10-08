@@ -1,27 +1,18 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import { useDb, schema } from '~~/server/database/client'
-import { redaksiObjek, redaksiTeks } from './redaksi'
+import { redaksiTeks } from './redaksi'
 import { terapkanStatusRun } from './status-run'
+import { bukaRunEksternal, karyawanDariProfil, tutupRunEksternal } from './run-eksternal'
+import type { BodyTersaring } from './hermes-saring'
 
 /**
  * Normalisasi event mentah outbound webhook Hermes → `task_events` (PRD §06).
- * Bentuk body (agent/outbound_webhooks.py): { hook_event_name, profile, tool_name, tool_input, session_id, cwd,
- *   extra: {...kwargs hook}, delivery_id, timestamp }
- * Pemetaan nama mengikuti docs/audit-phase0.md §4. Event yang tidak dikenal tetap disimpan apa adanya
- * sebagai `hermes.<nama>` supaya tidak ada data hilang, tapi tidak mengubah status apa pun.
+ * Body yang diproses adalah hasil `saringBodyHermes` (webhook_inbox.body): tool_input, hasil tool, dan
+ * conversation_history sudah dibuang sebelum tersimpan. Pemetaan nama mengikuti docs/audit-phase0.md §4.
+ * Event yang tidak dikenal tetap disimpan (metadata tersaring) sebagai `hermes.<nama>`, tanpa mengubah status.
+ * Sesi yang bukan dari dashboard (profil Hermes yang dipetakan ke AI employee) → run eksternal per giliran
+ * (lihat server/utils/run-eksternal.ts).
  */
-
-export interface BodyHermes {
-  hook_event_name: string
-  profile?: string
-  tool_name?: string | null
-  tool_input?: unknown
-  session_id?: string | null
-  cwd?: string | null
-  extra?: Record<string, unknown>
-  delivery_id: string
-  timestamp: string
-}
 
 const PETA: Record<string, string> = {
   on_session_start: 'session.started',
@@ -41,12 +32,13 @@ export function petakanNamaEvent(hook: string) {
   return PETA[hook] ?? `hermes.${hook}`
 }
 
-/** Cari run berdasarkan session Hermes di organisasi ini. */
+/** Cari run berdasarkan session Hermes di organisasi ini: yang masih terbuka diutamakan, lalu yang terbaru. */
 async function runDariSession(organizationId: string, sessionId: string | null | undefined) {
   if (!sessionId) return null
-  const [r] = await useDb().select().from(schema.agentRuns)
-    .where(and(eq(schema.agentRuns.organizationId, organizationId), eq(schema.agentRuns.hermesSessionId, sessionId))).limit(1)
-  return r ?? null
+  const baris = await useDb().select().from(schema.agentRuns)
+    .where(and(eq(schema.agentRuns.organizationId, organizationId), eq(schema.agentRuns.hermesSessionId, sessionId)))
+    .orderBy(desc(schema.agentRuns.createdAt)).limit(10)
+  return baris.find(r => !r.endedAt) ?? baris[0] ?? null
 }
 
 /** Pemrosesan inbox dijalankan serial per proses supaya urutan event (mis. subagent_start → post_tool_call) terjaga. */
@@ -61,7 +53,7 @@ export async function prosesInboxHermes(inboxId: string) {
   const [inbox] = await db.select().from(schema.webhookInbox).where(eq(schema.webhookInbox.id, inboxId)).limit(1)
   if (!inbox || inbox.processedAt) return
   try {
-    const body = JSON.parse(inbox.rawBody) as BodyHermes
+    const body = inbox.body as unknown as BodyTersaring
     const extra = (body.extra ?? {}) as Record<string, unknown>
     const jenis = petakanNamaEvent(body.hook_event_name)
     const occurredAt = Number.isFinite(Date.parse(body.timestamp)) ? new Date(body.timestamp) : inbox.receivedAt
@@ -69,6 +61,26 @@ export async function prosesInboxHermes(inboxId: string) {
 
     let run = await runDariSession(inbox.organizationId, sessionId)
     let data: Record<string, unknown> = { hook: body.hook_event_name, profile: body.profile ?? null }
+
+    // Sesi dari luar dashboard: profil Hermes → AI employee → run eksternal per giliran (dibuka malas pada event pertama).
+    if (sessionId && body.profile && !['subagent_start', 'subagent_stop'].includes(body.hook_event_name) && (!run || run.kind === 'external')) {
+      const karyawan = await karyawanDariProfil(inbox.organizationId, body.profile)
+      if (karyawan && (!run || run.endedAt)) {
+        // `platform` hanya ada di on_session_start; untuk event lain ambil dari event session.started sesi ini (bila ada).
+        let platform = typeof extra.platform === 'string' ? extra.platform : null
+        if (!platform) {
+          const [mulai] = await db.select({ data: schema.taskEvents.data }).from(schema.taskEvents)
+            .where(and(eq(schema.taskEvents.organizationId, inbox.organizationId), eq(schema.taskEvents.hermesSessionId, sessionId), eq(schema.taskEvents.sourceEventType, 'session.started')))
+            .orderBy(desc(schema.taskEvents.occurredAt)).limit(1)
+          const p = (mulai?.data as Record<string, unknown> | undefined)?.platform
+          platform = typeof p === 'string' ? p : null
+        }
+        run = await bukaRunEksternal({
+          organizationId: inbox.organizationId, runtimeId: inbox.runtimeId, karyawan, sessionId,
+          taskId: run?.taskId ?? null, platform, occurredAt
+        })
+      } else if (!karyawan) data.profilBelumDipetakan = true
+    }
 
     switch (body.hook_event_name) {
       case 'subagent_start': {
@@ -93,7 +105,8 @@ export async function prosesInboxHermes(inboxId: string) {
         const statusAnak = String(extra.child_status ?? 'unknown')
         data = { ...data, childSessionId: childSession, childStatus: statusAnak, durationMs: extra.duration_ms ?? null,
           childSummary: redaksiTeks(String(extra.child_summary ?? ''), 1000),
-          toolCallHistory: redaksiObjek(extra.tool_call_history ?? []) }
+          /** Hanya nama tool (argumen/hasil sudah dibuang saat penyaringan). */
+          toolCallHistory: Array.isArray(extra.tool_call_history) ? extra.tool_call_history : [] }
         if (run && run.kind === 'subagent') {
           const peta: Record<string, 'completed' | 'failed' | 'interrupted'> = { completed: 'completed', failed: 'failed', error: 'failed', interrupted: 'interrupted' }
           await db.update(schema.agentRuns).set({
@@ -109,14 +122,18 @@ export async function prosesInboxHermes(inboxId: string) {
       case 'on_session_end':
         data = { ...data, completed: extra.completed ?? null, failed: extra.failed ?? null, interrupted: extra.interrupted ?? null,
           turnExitReason: extra.turn_exit_reason ?? null, model: extra.model ?? null }
-        // Akhir turn ≠ akhir run; status run hanya dari /v1/runs. Tidak mengubah status di sini.
+        // Run utama (dashboard): akhir turn ≠ akhir run; status hanya dari /v1/runs. Run EKSTERNAL: giliran selesai = run selesai.
+        if (run?.kind === 'external' && !run.endedAt) {
+          const status = extra.failed ? 'failed' : extra.interrupted ? 'interrupted' : 'completed'
+          await tutupRunEksternal(run, status, occurredAt, { sumber: 'webhook', eventId: `hermes:${inbox.deliveryId}`, turnId: extra.turn_id ?? null, turnExitReason: extra.turn_exit_reason ?? null })
+          run = { ...run, status, endedAt: occurredAt }
+        }
         break
       case 'pre_tool_call':
       case 'post_tool_call':
+        // Hanya metadata: nama tool, status, durasi. Argumen & hasil tool tidak pernah disimpan.
         data = { ...data, toolName: body.tool_name ?? null, status: extra.status ?? null, durationMs: extra.duration_ms ?? null,
-          errorType: extra.error_type ?? null, errorMessage: extra.error_message ? redaksiTeks(String(extra.error_message), 300) : null,
-          // Argumen tool SELALU diredaksi dan dipotong sebelum disimpan.
-          toolInputPreview: redaksiTeks(JSON.stringify(body.tool_input ?? null), 300) }
+          errorType: extra.error_type ?? null, errorMessage: extra.error_message ? redaksiTeks(String(extra.error_message), 300) : null }
         break
       case 'pre_approval_request':
       case 'post_approval_response': {
@@ -139,7 +156,7 @@ export async function prosesInboxHermes(inboxId: string) {
         break
       }
       default:
-        data = { ...data, extra: redaksiObjek(extra) as Record<string, unknown> }
+        data = { ...data, extra } // sudah tersaring (daftar putih) saat masuk inbox
     }
 
     await db.insert(schema.taskEvents).values({

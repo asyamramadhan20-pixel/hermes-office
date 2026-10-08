@@ -58,8 +58,8 @@ after(async () => { await hermes?.tutup() })
 
 const tick = async (q = '') => { const r = await admin(`/api/admin/worker/tick${q}`, { method: 'POST' }); assert.equal(r.status, 200); return r.data }
 
-async function kirimOutbound(hook, { session_id, extra = {}, tool_name = null, tool_input = null, secret = outboundSecret, mutasi = b => b, headersTambahan = {} }) {
-  let body = JSON.stringify(mutasi({ hook_event_name: hook, profile: 'default', tool_name, tool_input, session_id, cwd: '/opt/data', extra, delivery_id: randomUUID().replace(/-/g, ''), timestamp: new Date().toISOString() }))
+async function kirimOutbound(hook, { session_id, extra = {}, tool_name = null, tool_input = null, profile = 'default', secret = outboundSecret, mutasi = b => b, headersTambahan = {} }) {
+  let body = JSON.stringify(mutasi({ hook_event_name: hook, profile, tool_name, tool_input, session_id, cwd: '/opt/data', extra, delivery_id: randomUUID().replace(/-/g, ''), timestamp: new Date().toISOString() }))
   const sig = 'sha256=' + createHmac('sha256', secret ?? '').update(body).digest('hex')
   const res = await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Hermes-Event': hook, 'X-Hermes-Signature-256': sig, ...headersTambahan }, body })
   return { status: res.status, data: await res.json().catch(() => null), body: JSON.parse(body) }
@@ -238,4 +238,66 @@ test('ubah base URL runtime tanpa rotasi kunci: webhook lama tetap diterima, kap
   const wh = await kirimOutbound('on_session_start', { session_id: 'sesi-setelah-ubah-url' })
   assert.ok(wh.status === 200 || wh.status === 202, `webhook lama harus tetap diterima, dapat ${wh.status}`)
   assert.equal((await admin(`/api/admin/runtimes/${runtime.id}`, { method: 'PATCH', body: {} })).status, 400)
+})
+
+test('sesi luar dashboard: profil Hermes → AI employee, run eksternal per giliran, argumen/hasil tool tidak disimpan', async () => {
+  const tunggu = () => new Promise(r => setTimeout(r, 800))
+  const S = 'sesi-telegram-aksa-1'
+  // 1) profil belum dipetakan → event tersimpan tanpa run, tercatat di daftar admin
+  assert.equal((await kirimOutbound('on_session_start', { session_id: S, profile: 'aksa', extra: { platform: 'telegram', model: 'm' } })).status, 202)
+  await tunggu()
+  let a = (await admin('/api/admin/orgs')).data.find(o => o.id === orgA.id)
+  assert.ok(a.profilBelumDipetakan.some(p => p.profile === 'aksa'), 'profil aksa terlihat tapi belum dipetakan')
+  assert.equal((await userA(`/api/orgs/${orgA.id}/tasks`)).data.filter(t => t.origin === 'external').length, 0)
+
+  // 2) petakan profil → employee; profil unik per organisasi
+  const runAktifAwal = (await userA(`/api/orgs/${orgA.id}/employees`)).data.find(x => x.id === karyawanA.id).runAktif // run dari test sebelumnya
+  assert.equal((await userA(`/api/orgs/${orgA.id}/employees/${karyawanA.id}`, { method: 'PATCH', body: { hermesProfile: 'aksa' } })).status, 200)
+  const lain = (await userA(`/api/orgs/${orgA.id}/employees`, { method: 'POST', body: { name: 'Dina', jobTitle: 'CS', department: 'CS' } })).data
+  assert.equal((await userA(`/api/orgs/${orgA.id}/employees/${lain.id}`, { method: 'PATCH', body: { hermesProfile: 'aksa' } })).status, 409)
+  assert.equal((await userB(`/api/orgs/${orgA.id}/employees/${karyawanA.id}`, { method: 'PATCH', body: { hermesProfile: 'x' } })).status, 404, 'isolasi tenant')
+
+  // 3) post_tool_call membuka run eksternal secara malas; argumen & hasil tool TIDAK tersimpan di mana pun
+  const RAHASIA = 'ISI-FILE-RAHASIA-9f8e7d6c'
+  assert.equal((await kirimOutbound('post_tool_call', { session_id: S, profile: 'aksa', tool_name: 'read_file', tool_input: { path: '/opt/data/.env' }, extra: { status: 'ok', duration_ms: 5, result: `API_KEY=${RAHASIA}`, args: { path: '/opt/data/.env' } } })).status, 202)
+  await tunggu()
+  let tugas = (await userA(`/api/orgs/${orgA.id}/tasks`)).data.find(t => t.origin === 'external')
+  assert.ok(tugas, 'tugas eksternal dibuat otomatis'); assert.equal(tugas.status, 'RUNNING'); assert.equal(tugas.employee.id, karyawanA.id); assert.match(tugas.title, /telegram/i)
+  let k = (await userA(`/api/orgs/${orgA.id}/employees`)).data.find(x => x.id === karyawanA.id)
+  assert.equal(k.runAktif, runAktifAwal + 1); assert.equal(k.hermesProfile, 'aksa')
+  let d = (await userA(`/api/orgs/${orgA.id}/tasks/${tugas.id}`)).data
+  const evTool = d.timeline.find(e => e.sourceEventType === 'tool.completed')
+  assert.ok(evTool && evTool.data.toolName === 'read_file' && !('toolInputPreview' in evTool.data), 'hanya nama tool yang disimpan')
+  assert.ok(!JSON.stringify(d).includes(RAHASIA) && !JSON.stringify(d).includes('/opt/data/.env'), 'hasil/argumen tool tidak bocor ke timeline')
+  const inbox = spawnSync('psql', [DB, '-tAc', "select string_agg(body::text, ' ') from webhook_inbox"], { encoding: 'utf8' })
+  assert.equal(inbox.status, 0); assert.ok(!inbox.stdout.includes(RAHASIA) && !inbox.stdout.includes('/opt/data/.env'), 'inbox tidak menyimpan argumen/hasil tool')
+  const kolom = spawnSync('psql', [DB, '-tAc', "select column_name from information_schema.columns where table_name='webhook_inbox' and column_name='raw_body'"], { encoding: 'utf8' })
+  assert.equal(kolom.stdout.trim(), '', 'kolom raw_body sudah tidak ada')
+  assert.ok(!JSON.stringify(await userA(`/api/orgs/${orgA.id}/events?json=1`)).includes(RAHASIA))
+
+  // 4) on_session_end = giliran selesai → run completed, tugas COMPLETED, karakter idle
+  assert.equal((await kirimOutbound('on_session_end', { session_id: S, profile: 'aksa', extra: { completed: true, failed: false, interrupted: false, turn_id: 't1', turn_exit_reason: 'ok' } })).status, 202)
+  await tunggu()
+  d = (await userA(`/api/orgs/${orgA.id}/tasks/${tugas.id}`)).data
+  assert.equal(d.tugas.status, 'COMPLETED'); assert.equal(d.runs.length, 1); assert.equal(d.runs[0].kind, 'external'); assert.equal(d.runs[0].status, 'completed')
+  k = (await userA(`/api/orgs/${orgA.id}/employees`)).data.find(x => x.id === karyawanA.id); assert.equal(k.runAktif, runAktifAwal)
+
+  // 5) giliran berikutnya tanpa tool: hanya on_session_end → run baru dibuka lalu langsung ditutup (on_session_start tidak dikirim ulang oleh Hermes)
+  assert.equal((await kirimOutbound('on_session_end', { session_id: S, profile: 'aksa', extra: { completed: false, failed: true, interrupted: false, turn_id: 't2' } })).status, 202)
+  await tunggu()
+  d = (await userA(`/api/orgs/${orgA.id}/tasks/${tugas.id}`)).data
+  assert.equal(d.runs.length, 2); assert.equal(d.tugas.status, 'FAILED')
+  assert.equal((await userA(`/api/orgs/${orgA.id}/tasks`)).data.filter(t => t.origin === 'external').length, 1, 'satu tugas per sesi')
+
+  // 6) giliran ketiga tanpa on_session_end (runtime diam) → setelah 30 menit tanpa event: UNKNOWN, bukan selesai
+  assert.equal((await kirimOutbound('post_tool_call', { session_id: S, profile: 'aksa', tool_name: 'terminal', extra: { status: 'ok' } })).status, 202)
+  await tunggu()
+  d = (await userA(`/api/orgs/${orgA.id}/tasks/${tugas.id}`)).data
+  assert.equal(d.tugas.status, 'RUNNING'); assert.equal(d.runs.length, 3)
+  assert.equal((await admin('/api/admin/worker/tick?runtime=0&majuMenit=31', { method: 'POST' })).status, 200)
+  d = (await userA(`/api/orgs/${orgA.id}/tasks/${tugas.id}`)).data
+  assert.equal(d.tugas.status, 'UNKNOWN'); assert.ok(d.runs.every(r => r.status !== 'running'))
+  a = (await admin('/api/admin/orgs')).data.find(o => o.id === orgA.id)
+  // event pertama (sebelum dipetakan) tetap tercatat sebagai yatim; setelah dipetakan tidak bertambah
+  assert.equal(a.profilBelumDipetakan.find(p => p.profile === 'aksa')?.n, 1)
 })

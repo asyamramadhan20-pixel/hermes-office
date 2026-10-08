@@ -19,6 +19,8 @@ export interface KaryawanAI {
   specialization: string | null
   isSupervisor: boolean
   isActive: boolean
+  /** Nama profil Hermes yang dipetakan ke employee ini (sesi Telegram/CLI tampil di kantor lewat ini). */
+  hermesProfile?: string | null
   /** Dihitung dari agent_runs non-terminal. */
   runAktif: number
   /** Dari event terakhir yang terkait. null = belum pernah terlihat. */
@@ -31,6 +33,8 @@ export interface TugasRingkas {
   title: string
   status: StatusTugas
   priority: number
+  /** dashboard = ASSIGN_TASK; external = sesi Hermes dari luar dashboard (dibuat otomatis dari event). */
+  origin?: 'dashboard' | 'external'
   employee: { id: string, name: string } | null
   createdAt: string
   startedAt: string | null

@@ -33,6 +33,25 @@ hermes --version
 `config.yaml` siap-salin tampil **sekali**; tombol **Probe /v1/capabilities** mengecek koneksi + membaca fitur runtime.
 Tidak perlu terminal atau membagikan password admin ke siapa pun.
 
+### Lebih dari satu profil Hermes (multiplexing)
+Tiap profil punya `config.yaml` dan `.env` sendiri. Blok `hooks.outbound` **dan** baris `HERMES_OUTBOUND_WEBHOOK_SECRET`
+harus ada di **tiap profil** (`profiles/<nama>/config.yaml` + `.env`): `secret_env` dibaca lewat scope profil masing-masing
+(`agent/outbound_webhooks.py`, `agent/secret_scope.py`), tidak fallback ke profil default → tanpa itu delivery UNSIGNED dan
+ditolak 401. URL + secret boleh sama untuk semua profil (satu runtime per organisasi).
+
+Supaya sesi profil itu (Telegram/CLI, bukan dari dashboard) **tampil di kantor**, petakan nama profil ke AI employee di
+Pengaturan → "Profil Hermes → AI employee". Tanpa pemetaan, event-nya cuma tercatat (kartu "Terakhir terlihat") dan muncul di
+daftar "terlihat, belum dipetakan". Model datanya: satu tugas `origin=external` per sesi, satu run `external` per giliran
+(Hermes memanggil `on_session_end` tiap pesan; `on_session_start` hanya sekali), dibuka malas pada event pertama; tanpa
+`on_session_end` selama 30 menit → UNKNOWN, bukan selesai.
+
+### Apa yang disimpan control plane (minimasi data)
+Payload Hermes membawa semua kwargs hook di `extra`, termasuk `result` tool (isi file, output terminal) dan, untuk
+`pre_llm_call`, seluruh riwayat percakapan. Control plane **tidak menyimpan raw body**: sebelum masuk `webhook_inbox`, body
+disaring (`server/utils/hermes-saring.ts`) → `tool_input` dibuang, `extra` hanya kunci metadata di daftar putih, teks bebas
+diredaksi + dipotong; yang tersimpan hanya digest SHA-256 untuk audit. Jadi aman memakai `post_tool_call`; tetap jangan
+tambahkan `pre_llm_call`/`post_llm_call` ke daftar event (tidak dibutuhkan kantor).
+
 Kalau nanti base URL berubah (mis. tunnel dipasang) atau `API_SERVER_KEY` diganti, pakai form **Ubah koneksi** di kartu yang sama
 (`PATCH /api/admin/runtimes/<id>`): URL webhook dan secret HMAC **tidak** dirotasi, jadi `config.yaml`/`.env` Hermes tidak perlu
 disentuh. **Pasang ulang runtime** sebaliknya membuat kunci + secret baru.

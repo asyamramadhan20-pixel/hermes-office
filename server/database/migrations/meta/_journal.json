@@ -8,6 +8,13 @@
       "when": 1791439119180,
       "tag": "0000_awal",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791478290204,
+      "tag": "0001_minimasi_inbox_profil",
+      "breakpoints": true
     }
   ]
 }

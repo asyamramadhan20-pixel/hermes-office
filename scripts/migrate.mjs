@@ -25,7 +25,11 @@ for (let coba = 1; ; coba++) {
   // max: 1 — migrasi harus berurutan di satu koneksi.
   const sql = postgres(url, { max: 1, ssl: /localhost|127\.0\.0\.1/.test(url) ? false : 'require' })
   try {
+    // Dua service (web + demo) berbagi satu Postgres dan preDeploy-nya jalan bersamaan: kunci advisory
+    // (sesi, dilepas saat koneksi ditutup) supaya migrasi berjalan satu per satu, bukan tabrakan.
+    await sql`select pg_advisory_lock(729173601)`
     await migrate(drizzle(sql), { migrationsFolder: './server/database/migrations' })
+    await sql`select pg_advisory_unlock(729173601)`
     console.log('✓ Migrasi selesai.')
     await sql.end()
     break
