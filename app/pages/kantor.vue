@@ -8,7 +8,7 @@ import type { KaryawanAI, TugasRingkas } from '~~/shared/kontrak'
 useHead({ title: 'Kantor Virtual' })
 
 const { demo, orgAktif, bolehAksi, profil, ringkasan, tugas, kirimPerintah } = useOffice()
-profil()
+const { data: profilSaya } = profil()
 const { data: ringkas, pending: memuat, error: galat, refresh: segarkan } = ringkasan(orgAktif)
 const { data: daftarTugas } = tugas(orgAktif)
 const toast = useToast()
@@ -66,7 +66,14 @@ async function mintaBatal(taskId: string) {
     <UAlert v-else-if="ringkas && basi" color="warning" variant="subtle" icon="i-lucide-clock-alert" title="Data basi" :description="`Tidak ada event baru selama ${ringkas.runtime.menitSejakEventTerakhir} menit.`" />
 
     <!-- Kanvas 3D -->
-    <UCard v-if="memuat && !ringkas"><Keadaan jenis="memuat" /></UCard>
+    <UCard v-if="!orgAktif && !memuat">
+      <Keadaan jenis="kosong" judul="Belum tergabung di organisasi mana pun" deskripsi="Akun Anda belum menjadi anggota organisasi. Minta admin platform menambahkan Anda, atau pilih organisasi di bilah atas bila sudah ada.">
+        <template v-if="profilSaya?.user.isPlatformAdmin" #aksi>
+          <UButton to="/pengaturan" variant="outline" color="neutral" size="sm" icon="i-lucide-building-2" label="Kelola organisasi" />
+        </template>
+      </Keadaan>
+    </UCard>
+    <UCard v-else-if="memuat && !ringkas"><Keadaan jenis="memuat" /></UCard>
     <UCard v-else-if="ringkas && karyawan.length === 0">
       <Keadaan jenis="kosong" judul="Kantor masih kosong" deskripsi="Daftarkan AI employee permanen (peran, SOP, departemen) supaya kantor ini terisi.">
         <template v-if="bolehAksi" #aksi>

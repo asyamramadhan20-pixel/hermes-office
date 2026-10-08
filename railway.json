@@ -6,7 +6,7 @@
   },
   "deploy": {
     "preDeployCommand": [
-      "node scripts/migrate.mjs"
+      "node scripts/migrate.mjs && node scripts/seed-admin.mjs --opsional && node scripts/seed-org.mjs --opsional"
     ],
     "startCommand": "node .output/server/index.mjs",
     "healthcheckPath": "/api/health",

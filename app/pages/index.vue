@@ -4,7 +4,7 @@ import type { BuatPerintah, TugasRingkas } from '~~/shared/kontrak'
 useHead({ title: 'Pusat Komando' })
 
 const { demo, orgAktif, bolehAksi, profil, ringkasan, tugas, kirimPerintah } = useOffice()
-profil()
+const { data: profilSaya } = profil()
 const { data: ringkas, pending: memuatRingkas, error: galatRingkas, refresh: segarkan } = ringkasan(orgAktif)
 const { data: daftarTugas, pending: memuatTugas } = tugas(orgAktif)
 const toast = useToast()
@@ -67,8 +67,15 @@ const basi = computed(() => (ringkas.value?.runtime.menitSejakEventTerakhir ?? 0
       </div>
     </div>
 
+    <UCard v-if="!orgAktif && !memuatRingkas">
+      <Keadaan jenis="kosong" judul="Belum tergabung di organisasi mana pun" deskripsi="Akun Anda belum menjadi anggota organisasi. Minta admin platform menambahkan Anda, atau pilih organisasi di bilah atas bila sudah ada.">
+        <template v-if="profilSaya?.user.isPlatformAdmin" #aksi>
+          <UButton to="/pengaturan" variant="outline" color="neutral" size="sm" icon="i-lucide-building-2" label="Kelola organisasi" />
+        </template>
+      </Keadaan>
+    </UCard>
     <UAlert
-      v-if="galatRingkas"
+      v-else-if="galatRingkas"
       color="error"
       variant="subtle"
       icon="i-lucide-triangle-alert"
