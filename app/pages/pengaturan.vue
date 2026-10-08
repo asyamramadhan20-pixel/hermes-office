@@ -79,6 +79,43 @@ const { data: karyawan, refresh: segarkanKaryawan } = await useAsyncData<Karyawa
 const profilDraf = reactive<Record<string, string>>({})
 watch(karyawan, (d) => { for (const k of d) profilDraf[k.id] = k.hermesProfile ?? '' }, { immediate: true })
 const simpanProfilId = ref<string | null>(null)
+/** Isi form "AI employee baru" dari profil yang terlihat tapi belum dipetakan (nama = profil, huruf depan kapital). */
+function siapkanDariProfil(profil: string) {
+  karyawanBaru.hermesProfile = profil
+  karyawanBaru.name = profil.replace(/^asisten/, 'Asisten ').replace(/(^|\s)\S/g, c => c.toUpperCase())
+  toast.add({ title: `Form diisi untuk profil "${profil}"`, description: 'Lengkapi jabatan & departemen, lalu klik Daftarkan.', color: 'info', icon: 'i-lucide-pencil' })
+}
+/** Impor massal: satu baris per karyawan "nama; jabatan; departemen; profil Hermes (opsional); supervisor (opsional)". */
+const imporTeks = ref('')
+const mengimpor = ref(false)
+async function imporMassal() {
+  if (!orgTerpilih.value) return
+  const baris = imporTeks.value.split('\n').map(b => b.trim()).filter(b => b && !b.startsWith('#'))
+  if (!baris.length) return
+  mengimpor.value = true
+  let ok = 0; const gagal: string[] = []
+  for (const b of baris) {
+    const [name = '', jobTitle = '', department = 'Umum', hermesProfile = '', sup = ''] = b.split(';').map(x => x.trim())
+    try {
+      await $fetch(`/api/orgs/${orgTerpilih.value}/employees`, { method: 'POST', body: { name, jobTitle, department: department || 'Umum', hermesProfile: hermesProfile || undefined, isSupervisor: /^(ya|y|true|supervisor)$/i.test(sup) } })
+      ok++
+    } catch (e) { gagal.push(`${name || b}: ${galat(e)}`) }
+  }
+  toast.add({ title: `${ok} AI employee diimpor${gagal.length ? `, ${gagal.length} gagal` : ''}`, description: gagal.slice(0, 3).join(' · ') || undefined, color: gagal.length ? 'warning' : 'success', icon: gagal.length ? 'i-lucide-triangle-alert' : 'i-lucide-check' })
+  if (!gagal.length) imporTeks.value = ''
+  mengimpor.value = false
+  await Promise.all([segarkanOrg(), segarkanKaryawan()])
+}
+const ubahAktifId = ref<string | null>(null)
+async function ubahAktif(k: KaryawanAI, isActive: boolean) {
+  if (!orgTerpilih.value) return
+  ubahAktifId.value = k.id
+  try {
+    await $fetch(`/api/orgs/${orgTerpilih.value}/employees/${k.id}`, { method: 'PATCH', body: { isActive } })
+    toast.add({ title: isActive ? `${k.name} diaktifkan` : `${k.name} dinonaktifkan`, description: isActive ? 'Kembali punya meja di kantor.' : 'Tidak lagi punya meja di kantor; data tugasnya tetap tersimpan.', color: 'success', icon: 'i-lucide-check' })
+    await Promise.all([segarkanKaryawan(), segarkanOrg()])
+  } catch (e) { toast.add({ title: 'Gagal mengubah status', description: galat(e), color: 'error', icon: 'i-lucide-triangle-alert' }) } finally { ubahAktifId.value = null }
+}
 async function simpanProfil(k: KaryawanAI) {
   if (!orgTerpilih.value) return
   simpanProfilId.value = k.id
@@ -211,6 +248,12 @@ function blokConfig(url: string) {
             <UButton type="submit" size="sm" icon="i-lucide-plus" label="Daftarkan" :loading="simpanKaryawan" class="w-fit" />
           </form>
           <p class="text-xs text-muted mt-3">Endpoint ini memakai peran organisasi; pastikan akun admin juga anggota (owner/manager) organisasi ini.</p>
+          <details class="mt-4">
+            <summary class="text-xs font-semibold text-muted uppercase tracking-wider cursor-pointer">Impor massal (satu baris per karyawan)</summary>
+            <p class="text-xs text-muted mt-2">Format: <code class="font-mono">nama; jabatan; departemen; profil Hermes; supervisor</code> (dua kolom terakhir opsional, supervisor = "ya").</p>
+            <UTextarea v-model="imporTeks" :rows="6" size="sm" class="w-full mt-2 font-mono" placeholder="Arga; Koordinator Riset Produk; Riset Produk; arga; ya&#10;Raja; Competitor Intelligence; Riset Produk; raja" />
+            <UButton size="sm" variant="outline" color="neutral" icon="i-lucide-upload" label="Impor" :loading="mengimpor" :disabled="!imporTeks.trim()" class="mt-2" @click="imporMassal" />
+          </details>
         </UCard>
 
         <!-- Pemetaan profil Hermes → AI employee -->
@@ -224,14 +267,15 @@ function blokConfig(url: string) {
           <div v-if="org.profilBelumDipetakan.length" class="mb-4">
             <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">Terlihat mengirim event, belum dipetakan</p>
             <div class="flex flex-wrap gap-1.5">
-              <UBadge v-for="p in org.profilBelumDipetakan" :key="p.profile" variant="soft" color="warning" size="sm" :label="`${p.profile} · ${p.n} event · ${waktuRelatif(p.terakhir)}`" class="font-mono" />
+              <UButton v-for="p in org.profilBelumDipetakan" :key="p.profile" variant="soft" color="warning" size="xs" icon="i-lucide-user-plus" :label="`${p.profile} · ${p.n} event · ${waktuRelatif(p.terakhir)}`" class="font-mono" :title="`Buat AI employee untuk profil ${p.profile}`" @click="siapkanDariProfil(p.profile)" />
             </div>
           </div>
           <ul v-if="karyawan.length" class="divide-y divide-default">
-            <li v-for="k in karyawan" :key="k.id" class="py-2 grid grid-cols-1 sm:grid-cols-[1fr_minmax(12rem,16rem)_auto] gap-2 items-center">
-              <span class="min-w-0 text-sm"><span class="font-medium text-highlighted">{{ k.name }}</span> <span class="text-muted">· {{ k.jobTitle }}</span><span v-if="!k.isActive" class="text-muted"> · nonaktif</span></span>
+            <li v-for="k in karyawan" :key="k.id" class="py-2 grid grid-cols-1 sm:grid-cols-[1fr_minmax(12rem,16rem)_auto_auto] gap-2 items-center" :class="{ 'opacity-60': !k.isActive }">
+              <span class="min-w-0 text-sm"><span class="font-medium text-highlighted">{{ k.name }}</span> <span class="text-muted">· {{ k.jobTitle }} · {{ k.department }}</span><UBadge v-if="!k.isActive" variant="soft" color="neutral" size="xs" label="nonaktif" class="ml-1.5" /><UBadge v-else-if="k.isSupervisor" variant="soft" color="primary" size="xs" label="supervisor" class="ml-1.5" /></span>
               <UInput v-model="profilDraf[k.id]" placeholder="nama profil Hermes" size="sm" class="font-mono" :aria-label="`Profil Hermes untuk ${k.name}`" />
               <UButton size="sm" variant="outline" color="neutral" icon="i-lucide-save" label="Simpan" :loading="simpanProfilId === k.id" :disabled="(profilDraf[k.id] ?? '') === (k.hermesProfile ?? '')" @click="simpanProfil(k)" />
+              <UButton size="sm" variant="ghost" color="neutral" :icon="k.isActive ? 'i-lucide-user-x' : 'i-lucide-user-check'" :label="k.isActive ? 'Nonaktifkan' : 'Aktifkan'" :loading="ubahAktifId === k.id" @click="ubahAktif(k, !k.isActive)" />
             </li>
           </ul>
           <p v-else class="text-sm text-muted">Belum ada AI employee di organisasi ini.</p>

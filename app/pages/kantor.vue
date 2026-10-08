@@ -19,7 +19,7 @@ const ringkasKantor = computed(() => ({
   karyawan: karyawan.value.filter(k => k.isActive).length,
   sibuk: karyawan.value.filter(k => k.runAktif > 0).length,
   run: karyawan.value.reduce((n, k) => n + k.runAktif, 0),
-  departemen: new Set(karyawan.value.filter(k => !k.isSupervisor).map(k => k.department)).size
+  departemen: new Set(karyawan.value.filter(k => k.isActive && !k.isSupervisor).map(k => k.department)).size
 }))
 const basi = computed(() => (ringkas.value?.runtime.menitSejakEventTerakhir ?? 0) > 10)
 

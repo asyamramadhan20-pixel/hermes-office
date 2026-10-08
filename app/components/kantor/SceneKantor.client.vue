@@ -47,10 +47,13 @@ let timer: ReturnType<typeof setInterval> | null = null
 onMounted(() => { timer = setInterval(() => { sekarang.value = Date.now() }, 1000) })
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
-const supervisor = computed(() => props.karyawan.find(k => k.isSupervisor) ?? null)
+/* Karyawan nonaktif tidak punya meja/ruangan (dinonaktifkan = keluar dari kantor). */
+const aktif = computed(() => props.karyawan.filter(k => k.isActive))
+/* Hanya SATU supervisor menempati HQ (yang pertama = MasterCEO); supervisor lain (mis. koordinator divisi) duduk di ruang divisinya. */
+const supervisor = computed(() => aktif.value.find(k => k.isSupervisor) ?? null)
 const departemen = computed(() => {
   const peta = new Map<string, KaryawanAI[]>()
-  for (const k of props.karyawan.filter(k => !k.isSupervisor)) peta.set(k.department, [...(peta.get(k.department) ?? []), k])
+  for (const k of aktif.value.filter(k => k.id !== supervisor.value?.id)) peta.set(k.department, [...(peta.get(k.department) ?? []), k])
   const daftar = [...peta.entries()].sort((a, b) => a[0].localeCompare(b[0], 'id')).map(([nama, daftar]) => ({ nama, daftar }))
   const ukuran = daftar.map(d => ukuranRuangDivisi(d.daftar.length, daftar.length))
   return daftar.map((d, i) => ({ ...d, ...ukuran[i]!, position: posisiZona(i, daftar.length, ukuran.map(u => u.lebar)) }))
@@ -69,7 +72,7 @@ watch(departemen, (d) => {
 
 const aksiPer = computed<Record<string, AksiKarakter>>(() => {
   const hasil: Record<string, AksiKarakter> = {}
-  for (const k of props.karyawan) hasil[k.id] = k.isSupervisor ? turunkanAksiSupervisor(k, props.tugas, props.events, sekarang.value) : turunkanAksi(k, props.tugas, props.events, sekarang.value)
+  for (const k of aktif.value) hasil[k.id] = k.id === supervisor.value?.id ? turunkanAksiSupervisor(k, props.tugas, props.events, sekarang.value) : turunkanAksi(k, props.tugas, props.events, sekarang.value)
   return hasil
 })
 /* slot kursi meeting & meja lab dibagi berurutan supaya tidak bertumpuk */
