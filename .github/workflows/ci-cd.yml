@@ -47,21 +47,3 @@ jobs:
             .output/**/*.log
           if-no-files-found: ignore
 
-  deploy:
-    name: Deploy Railway
-    needs: uji
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Pasang Railway CLI
-        run: npm i -g @railway/cli
-      - name: Deploy
-        run: railway up --service "${{ vars.RAILWAY_SERVICE || 'hermes-office' }}" --detach
